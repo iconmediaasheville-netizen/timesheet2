@@ -235,11 +235,11 @@
         <div class="grid-2">
           <div class="form-group">
             <label>Start Miles <span class="hint">(Morning Odometer)</span></label>
-            <input type="number" step="0.1" id="milesIn" placeholder="e.g. 50000">
+            <input type="number" step="0.1" id="milesIn" placeholder="Auto-fills from past entry">
           </div>
           <div class="form-group">
             <label>End Miles <span class="hint">(Evening Odometer)</span></label>
-            <input type="number" step="0.1" id="milesOut" placeholder="e.g. 50085">
+            <input type="number" step="0.1" id="milesOut" placeholder="Current Odometer">
           </div>
         </div>
 
@@ -301,6 +301,38 @@
       }
     });
 
+    // Smart mileage pre-fill based on selected date
+    function autoFillMileageForDate() {
+      const selectedDate = document.getElementById('entryDate').value;
+      if (!selectedDate) return;
+
+      const sameDayLogs = logs.filter(l => l.date === selectedDate);
+
+      if (sameDayLogs.length > 0) {
+        // Find earliest Start Miles for the day
+        const earliestStart = sameDayLogs.reduce((earliest, l) => {
+          if (l.milesIn !== null && (earliest === null || l.milesIn < earliest)) {
+            return l.milesIn;
+          }
+          return earliest;
+        }, null);
+
+        if (earliestStart !== null) {
+          document.getElementById('milesIn').value = earliestStart;
+          return;
+        }
+      }
+
+      // If no entries for today, carry over the last recorded End Miles from any past day
+      const previousLogs = logs.filter(l => l.date < selectedDate && l.milesOut !== null);
+      if (previousLogs.length > 0) {
+        previousLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+        document.getElementById('milesIn').value = previousLogs[0].milesOut;
+      }
+    }
+
+    document.getElementById('entryDate').addEventListener('change', autoFillMileageForDate);
+
     function getMonday(dateString) {
       const d = new Date(dateString + 'T00:00:00');
       const day = d.getDay();
@@ -325,6 +357,7 @@
       document.getElementById('milesIn').value = '';
       document.getElementById('milesOut').value = '';
       document.getElementById('workDone').value = '';
+      autoFillMileageForDate();
     }
 
     document.getElementById('timesheetForm').addEventListener('submit', function(e) {
@@ -356,20 +389,37 @@
       if (endMinutes < startMinutes) endMinutes += 24 * 60;
       const hours = ((endMinutes - startMinutes) / 60).toFixed(2);
 
-      let miles = 0;
-      if (milesIn !== null && milesOut !== null && milesOut >= milesIn) {
-        miles = (milesOut - milesIn).toFixed(1);
-      }
-
-      const entry = { id: Date.now(), date, job, doorCode, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles, workDone };
+      const entry = { id: Date.now(), date, job, doorCode, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles: 0, workDone };
       logs.push(entry);
+      
       saveAndRender();
-
       clearForm();
     });
 
     function saveAndRender() {
       logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Calculate daily total mileage (End Miles - Morning Start Miles)
+      const dailyMileageMap = {};
+      const uniqueDates = [...new Set(logs.map(l => l.date))];
+
+      uniqueDates.forEach(d => {
+        const dayEntries = logs.filter(l => l.date === d);
+        let minStart = null;
+        let maxEnd = null;
+
+        dayEntries.forEach(l => {
+          if (l.milesIn !== null && (minStart === null || l.milesIn < minStart)) minStart = l.milesIn;
+          if (l.milesOut !== null && (maxEnd === null || l.milesOut > maxEnd)) maxEnd = l.milesOut;
+        });
+
+        if (minStart !== null && maxEnd !== null && maxEnd >= minStart) {
+          dailyMileageMap[d] = (maxEnd - minStart).toFixed(1);
+        } else {
+          dailyMileageMap[d] = '0.0';
+        }
+      });
+
       localStorage.setItem('full_timesheet_logs', JSON.stringify(logs));
 
       const currentPayRate = parseFloat(localStorage.getItem('global_pay_rate') || '25.00') || 0;
@@ -393,21 +443,27 @@
         const sundayDate = addDays(mondayDate, 6);
         const weekLogs = grouped[mondayDate];
 
-        let totHours = 0, totMiles = 0, totPay = 0;
+        let totHours = 0, totPay = 0;
+
+        // Calculate weekly mileage sum from distinct days
+        const weekDates = [...new Set(weekLogs.map(l => l.date))];
+        let totMiles = 0;
+        weekDates.forEach(d => {
+          totMiles += parseFloat(dailyMileageMap[d] || 0);
+        });
 
         const tableRows = weekLogs.map(l => {
           const entryPay = parseFloat(l.hours) * currentPayRate;
           totHours += parseFloat(l.hours);
-          totMiles += parseFloat(l.miles);
           totPay += entryPay;
 
           let milesDisplay = '-';
-          if (parseFloat(l.miles) > 0) {
-            milesDisplay = `${l.miles} mi <br><small style="color:#64748b;">(${l.milesIn}-${l.milesOut})</small>`;
-          } else if (l.milesIn !== null && l.milesOut === null) {
-            milesDisplay = `<small style="color:#64748b;">Start: ${l.milesIn}</small>`;
-          } else if (l.milesOut !== null && l.milesIn === null) {
+          if (l.milesOut !== null && l.milesIn !== null) {
+            milesDisplay = `<small style="color:#64748b;">Start: ${l.milesIn}<br>End: ${l.milesOut}</small>`;
+          } else if (l.milesOut !== null) {
             milesDisplay = `<small style="color:#64748b;">End: ${l.milesOut}</small>`;
+          } else if (l.milesIn !== null) {
+            milesDisplay = `<small style="color:#64748b;">Start: ${l.milesIn}</small>`;
           }
 
           const doorCodeHTML = l.doorCode ? `<div class="code-badge">🔑 Code: ${l.doorCode}</div>` : '';
@@ -447,7 +503,7 @@
               <tr>
                 <th style="width:18%;">Date / Job</th>
                 <th style="width:15%;">Times</th>
-                <th style="width:15%;">Miles</th>
+                <th style="width:15%;">Odometer</th>
                 <th style="width:38%;">Work Done & Materials</th>
                 <th style="width:10%;">Pay</th>
                 <th class="no-print" style="width:4%;"></th>
@@ -469,6 +525,7 @@
     function deleteEntry(id) {
       logs = logs.filter(item => item.id !== id);
       saveAndRender();
+      autoFillMileageForDate();
     }
 
     function clearAllData() {
@@ -478,10 +535,12 @@
         localStorage.removeItem('job_directory_db');
         saveAndRender();
         populateDatalist();
+        clearForm();
       }
     }
 
     saveAndRender();
+    autoFillMileageForDate();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
