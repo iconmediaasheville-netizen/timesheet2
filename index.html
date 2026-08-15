@@ -64,6 +64,37 @@
       text-align: right;
     }
 
+    /* Quick Time Tracker Component */
+    .quick-tracker-box {
+      background: #fff7ed;
+      border: 1px dashed var(--primary);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .quick-tracker-box h4 {
+      margin: 0 0 10px 0;
+      color: #9a3412;
+      font-size: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .task-list {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #7c2d12; }
     .hint { font-size: 12px; font-weight: normal; color: #9a3412; margin-left: 4px; }
@@ -83,13 +114,14 @@
     }
     
     textarea { 
-      min-height: 100px; 
+      min-height: 80px; 
       resize: vertical; 
       line-height: 1.5; 
       font-family: inherit;
     }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
     
     button { 
       width: 100%; 
@@ -105,11 +137,12 @@
       transition: background 0.2s;
     }
     button:hover { background: var(--primary-hover); }
+    .btn-small { padding: 8px 12px; font-size: 13px; margin-top: 0; }
     .btn-secondary { background: #64748b; margin-top: 12px; }
     .btn-secondary:hover { background: #475569; }
     .btn-clear { background: #94a3b8; color: white; margin-top: 8px; }
     .btn-clear:hover { background: #64748b; }
-    .btn-danger { background: #ef4444; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-danger { background: #ef4444; width: auto; padding: 4px 8px; font-size: 11px; border-radius: 6px; }
     
     .week-header { 
       background: var(--accent-light); 
@@ -197,6 +230,23 @@
 
     <div class="card no-print">
       <h2>Log Work Entry</h2>
+
+      <!-- Quick Task / Time Tracker -->
+      <div class="quick-tracker-box">
+        <h4>
+          <span>⏱️ Quick Task Logger</span>
+          <span id="quickTotalDisplay" style="font-size:12px; font-weight:normal; color:#7c2d12;">Total: 0.0 hrs</span>
+        </h4>
+        <div class="grid-3">
+          <input type="text" id="quickJob" list="jobList" placeholder="Job Name...">
+          <input type="number" id="quickHours" step="0.25" placeholder="Hours (e.g. 1.0)">
+          <input type="text" id="quickNote" placeholder="Task details...">
+        </div>
+        <button type="button" class="btn-small" onclick="addQuickTask()" style="margin-top:8px;">+ Add Quick Time Block</button>
+        
+        <div id="quickTaskList" class="task-list"></div>
+      </div>
+
       <form id="timesheetForm">
         <div class="grid-2">
           <div class="form-group">
@@ -204,7 +254,7 @@
             <input type="date" id="entryDate" required>
           </div>
           <div class="form-group">
-            <label>Job Name <span class="hint">(Auto-completes)</span></label>
+            <label>Main Job Name <span class="hint">(Auto-completes)</span></label>
             <input type="text" id="jobName" list="jobList" placeholder="Type or choose job name..." required autocomplete="off">
             <datalist id="jobList"></datalist>
           </div>
@@ -218,7 +268,7 @@
         <!-- Notes & Materials Field -->
         <div class="form-group">
           <label>Notes & Materials <span class="hint">(Supplies purchased, site notes, material costs, etc.)</span></label>
-          <textarea id="notesMaterials" rows="3" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
+          <textarea id="notesMaterials" rows="2" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
         </div>
 
         <div class="grid-2">
@@ -249,7 +299,7 @@
         </div>
 
         <div class="grid-2">
-          <button type="submit">Add Entry</button>
+          <button type="submit">Add Final Entry</button>
           <button type="button" class="btn-clear" onclick="clearForm()">Clear Entry</button>
         </div>
       </form>
@@ -281,6 +331,7 @@
 
     let logs = JSON.parse(localStorage.getItem('full_timesheet_logs') || '[]');
     let jobDirectory = JSON.parse(localStorage.getItem('job_directory_db') || '{}');
+    let quickTasks = JSON.parse(localStorage.getItem('temp_quick_tasks') || '[]');
 
     function populateDatalist() {
       const datalist = document.getElementById('jobList');
@@ -301,6 +352,55 @@
       }
     });
 
+    // Quick Task Tracker logic
+    function renderQuickTasks() {
+      const container = document.getElementById('quickTaskList');
+      container.innerHTML = '';
+      let totalHrs = 0;
+
+      quickTasks.forEach((task, index) => {
+        totalHrs += parseFloat(task.hours || 0);
+        const div = document.createElement('div');
+        div.className = 'task-item';
+        div.innerHTML = `
+          <span><strong>${task.job}:</strong> ${task.hours} hrs ${task.note ? '— ' + task.note : ''}</span>
+          <button type="button" class="btn-danger" onclick="removeQuickTask(${index})">X</button>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('quickTotalDisplay').innerText = `Total: ${totalHrs.toFixed(2)} hrs`;
+      localStorage.setItem('temp_quick_tasks', JSON.stringify(quickTasks));
+    }
+
+    function addQuickTask() {
+      const job = document.getElementById('quickJob').value.trim();
+      const hours = parseFloat(document.getElementById('quickHours').value);
+      const note = document.getElementById('quickNote').value.trim();
+
+      if (!job || isNaN(hours) || hours <= 0) {
+        alert('Please enter a job name and valid hours.');
+        return;
+      }
+
+      quickTasks.push({ job, hours, note });
+      document.getElementById('quickHours').value = '';
+      document.getElementById('quickNote').value = '';
+      renderQuickTasks();
+
+      // Auto-set main job name if empty
+      if (!document.getElementById('jobName').value) {
+        document.getElementById('jobName').value = job;
+      }
+    }
+
+    function removeQuickTask(index) {
+      quickTasks.splice(index, 1);
+      renderQuickTasks();
+    }
+
+    renderQuickTasks();
+
     // Smart mileage pre-fill based on selected date
     function autoFillMileageForDate() {
       const selectedDate = document.getElementById('entryDate').value;
@@ -309,7 +409,6 @@
       const sameDayLogs = logs.filter(l => l.date === selectedDate);
 
       if (sameDayLogs.length > 0) {
-        // Find earliest Start Miles for the day
         const earliestStart = sameDayLogs.reduce((earliest, l) => {
           if (l.milesIn !== null && (earliest === null || l.milesIn < earliest)) {
             return l.milesIn;
@@ -323,7 +422,6 @@
         }
       }
 
-      // If no entries for today, carry over the last recorded End Miles from any past day
       const previousLogs = logs.filter(l => l.date < selectedDate && l.milesOut !== null);
       if (previousLogs.length > 0) {
         previousLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -357,6 +455,8 @@
       document.getElementById('milesIn').value = '';
       document.getElementById('milesOut').value = '';
       document.getElementById('workDone').value = '';
+      quickTasks = [];
+      renderQuickTasks();
       autoFillMileageForDate();
     }
 
@@ -373,9 +473,14 @@
       const milesOutRaw = document.getElementById('milesOut').value;
       const milesIn = milesInRaw !== '' ? parseFloat(milesInRaw) : null;
       const milesOut = milesOutRaw !== '' ? parseFloat(milesOutRaw) : null;
-      const workDone = document.getElementById('workDone').value;
+      let workDone = document.getElementById('workDone').value;
 
-      // Update persistent job directory memory
+      // Append quick task logs to work description if present
+      if (quickTasks.length > 0) {
+        const quickSummary = quickTasks.map(t => `• ${t.job}: ${t.hours} hrs ${t.note ? '(' + t.note + ')' : ''}`).join('\n');
+        workDone = workDone ? `${workDone}\n\nTask Breakdown:\n${quickSummary}` : `Task Breakdown:\n${quickSummary}`;
+      }
+
       if (job) {
         jobDirectory[job] = { doorCode: doorCode };
         localStorage.setItem('job_directory_db', JSON.stringify(jobDirectory));
@@ -399,7 +504,6 @@
     function saveAndRender() {
       logs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // Calculate daily total mileage (End Miles - Morning Start Miles)
       const dailyMileageMap = {};
       const uniqueDates = [...new Set(logs.map(l => l.date))];
 
@@ -445,7 +549,6 @@
 
         let totHours = 0, totPay = 0;
 
-        // Calculate weekly mileage sum from distinct days
         const weekDates = [...new Set(weekLogs.map(l => l.date))];
         let totMiles = 0;
         weekDates.forEach(d => {
@@ -532,7 +635,9 @@
       if (confirm("Are you sure you want to clear all entries and saved job details?")) {
         logs = [];
         jobDirectory = {};
+        quickTasks = [];
         localStorage.removeItem('job_directory_db');
+        localStorage.removeItem('temp_quick_tasks');
         saveAndRender();
         populateDatalist();
         clearForm();
