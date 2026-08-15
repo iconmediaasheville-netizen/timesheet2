@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-<<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.png">
-<meta name="theme-color" content="#f97316">>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Weekly Timesheet & Mileage</title>
+  
+  <!-- Web App Manifest & Inline Orange Icon -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='115' fill='%23f97316'/%3E%3Ccircle cx='256' cy='256' r='170' fill='none' stroke='%23ffffff' stroke-width='28'/%3E%3Cpath d='M256 120 V256 L340 300' fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='256' cy='256' r='16' fill='%23ffffff'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='115' fill='%23f97316'/%3E%3Ccircle cx='256' cy='256' r='170' fill='none' stroke='%23ffffff' stroke-width='28'/%3E%3Cpath d='M256 120 V256 L340 300' fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='256' cy='256' r='16' fill='%23ffffff'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f97316">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <style>
     :root { 
       --bg: #fffbf7; 
@@ -15,6 +22,8 @@
       --accent-light: #ffedd5; /* Very Light Orange / Peach */
       --border: #fed7aa; 
       --text: #1e293b; 
+      --success: #16a34a;
+      --success-hover: #15803d;
     }
     
     body { 
@@ -43,7 +52,6 @@
       box-shadow: 0 2px 8px rgba(249, 115, 22, 0.08); 
     }
     
-    /* Top Global Settings Bar */
     .settings-bar { 
       display: flex; 
       justify-content: space-between; 
@@ -66,7 +74,6 @@
       text-align: right;
     }
 
-    /* Quick Time Tracker Component */
     .quick-tracker-box {
       background: #fff7ed;
       border: 1px dashed var(--primary);
@@ -145,6 +152,8 @@
     .btn-clear { background: #94a3b8; color: white; margin-top: 8px; }
     .btn-clear:hover { background: #64748b; }
     .btn-danger { background: #ef4444; width: auto; padding: 4px 8px; font-size: 11px; border-radius: 6px; }
+    .btn-success { background: var(--success); width: auto; padding: 8px 14px; font-size: 13px; margin-left: 6px; }
+    .btn-success:hover { background: var(--success-hover); }
     
     .week-header { 
       background: var(--accent-light); 
@@ -205,7 +214,15 @@
       margin-top: 4px;
     }
 
-    /* Print Formatting Rules */
+    .auto-status {
+      font-size: 12px;
+      color: #16a34a;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     @media print {
       body { background: white !important; padding: 0 !important; color: #000 !important; }
       .no-print { display: none !important; }
@@ -222,7 +239,6 @@
 <body>
   <div class="container">
     
-    <!-- Top Global Settings Header -->
     <div class="settings-bar no-print">
       <span><strong>Hourly Pay Rate:</strong> Applied to all log calculations</span>
       <div>
@@ -233,7 +249,6 @@
     <div class="card no-print">
       <h2>Log Work Entry</h2>
 
-      <!-- Quick Task / Time Tracker -->
       <div class="quick-tracker-box">
         <h4>
           <span>⏱️ Quick Task Logger</span>
@@ -267,7 +282,6 @@
           <input type="text" id="doorCode" placeholder="e.g. Keypad #1234, Gate code 8890, Lockbox 4321">
         </div>
 
-        <!-- Notes & Materials Field -->
         <div class="form-group">
           <label>Notes & Materials <span class="hint">(Supplies purchased, site notes, material costs, etc.)</span></label>
           <textarea id="notesMaterials" rows="2" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
@@ -308,9 +322,13 @@
     </div>
 
     <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <h3 style="margin:0; color:#9a3412;">Weekly Summary Sheet</h3>
-        <button class="no-print" onclick="window.print()" style="width: auto; padding: 8px 16px;">Print / PDF</button>
+        <div class="no-print" style="display:flex; align-items:center; gap:8px;">
+          <span class="auto-status">🟢 Auto-backed up</span>
+          <button onclick="window.print()" style="width: auto; padding: 8px 14px; font-size: 13px;">Print / PDF</button>
+          <button class="btn-success" onclick="exportToCSV()">Manual CSV Export</button>
+        </div>
       </div>
 
       <div id="weeklyContainer"></div>
@@ -346,7 +364,6 @@
     }
     populateDatalist();
 
-    // Auto-fill door code when typing/selecting a job name
     document.getElementById('jobName').addEventListener('input', function() {
       const jobNameVal = this.value.trim();
       if (jobDirectory[jobNameVal] && jobDirectory[jobNameVal].doorCode) {
@@ -354,7 +371,6 @@
       }
     });
 
-    // Quick Task Tracker logic
     function renderQuickTasks() {
       const container = document.getElementById('quickTaskList');
       container.innerHTML = '';
@@ -390,7 +406,6 @@
       document.getElementById('quickNote').value = '';
       renderQuickTasks();
 
-      // Auto-set main job name if empty
       if (!document.getElementById('jobName').value) {
         document.getElementById('jobName').value = job;
       }
@@ -403,7 +418,6 @@
 
     renderQuickTasks();
 
-    // Smart mileage pre-fill based on selected date
     function autoFillMileageForDate() {
       const selectedDate = document.getElementById('entryDate').value;
       if (!selectedDate) return;
@@ -477,7 +491,6 @@
       const milesOut = milesOutRaw !== '' ? parseFloat(milesOutRaw) : null;
       let workDone = document.getElementById('workDone').value;
 
-      // Append quick task logs to work description if present
       if (quickTasks.length > 0) {
         const quickSummary = quickTasks.map(t => `• ${t.job}: ${t.hours} hrs ${t.note ? '(' + t.note + ')' : ''}`).join('\n');
         workDone = workDone ? `${workDone}\n\nTask Breakdown:\n${quickSummary}` : `Task Breakdown:\n${quickSummary}`;
@@ -499,11 +512,11 @@
       const entry = { id: Date.now(), date, job, doorCode, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles: 0, workDone };
       logs.push(entry);
       
-      saveAndRender();
+      saveAndRender(true);
       clearForm();
     });
 
-    function saveAndRender() {
+    function saveAndRender(triggerAutoDownload = false) {
       logs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       const dailyMileageMap = {};
@@ -625,6 +638,50 @@
 
         container.innerHTML += weekHTML;
       }
+
+      if (triggerAutoDownload) {
+        exportToCSV();
+      }
+    }
+
+    function exportToCSV() {
+      if (logs.length === 0) return;
+
+      const currentPayRate = parseFloat(localStorage.getItem('global_pay_rate') || '25.00') || 0;
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Date,Job Name,Door Code,Time In,Time Out,Hours,Pay Rate,Calculated Pay,Start Miles,End Miles,Work Done,Notes and Materials\n";
+
+      logs.forEach(log => {
+        const pay = (parseFloat(log.hours || 0) * currentPayRate).toFixed(2);
+        const cleanWork = (log.workDone || '').replace(/\n/g, ' ').replace(/"/g, '""');
+        const cleanNotes = (log.notesMaterials || '').replace(/\n/g, ' ').replace(/"/g, '""');
+        const cleanJob = (log.job || '').replace(/"/g, '""');
+        const cleanDoor = (log.doorCode || '').replace(/"/g, '""');
+
+        const row = [
+          `"${log.date || ''}"`,
+          `"${cleanJob}"`,
+          `"${cleanDoor}"`,
+          `"${log.timeIn || ''}"`,
+          `"${log.timeOut || ''}"`,
+          `"${log.hours || ''}"`,
+          `"$${currentPayRate.toFixed(2)}"`,
+          `"$${pay}"`,
+          `"${log.milesIn !== null ? log.milesIn : ''}"`,
+          `"${log.milesOut !== null ? log.milesOut : ''}"`,
+          `"${cleanWork}"`,
+          `"${cleanNotes}"`
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `timesheet_backup_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function deleteEntry(id) {
