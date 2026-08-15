@@ -1,74 +1,428 @@
-Weekly Timesheet & Mileage
-  
-
-
-  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekly Timesheet & Mileage</title>
+  <style>
+    :root { 
+      --bg: #fffbf7; 
+      --card: #ffffff; 
+      --primary: #f97316; /* Warm Orange */
+      --primary-hover: #ea580c;
+      --accent-light: #ffedd5; /* Very Light Orange / Peach */
+      --border: #fed7aa; 
+      --text: #1e293b; 
+    }
     
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background: var(--bg); 
+      color: var(--text); 
+      margin: 0; 
+      padding: 16px; 
+    }
     
+    .container { max-width: 800px; margin: 0 auto; }
     
-      Hourly Pay Rate: Applied to all log calculations
-      
-        $ / hr
-      
+    h2 { 
+      text-align: center; 
+      margin-bottom: 16px; 
+      font-size: 22px; 
+      color: #9a3412;
+    }
     
-
+    .card { 
+      background: var(--card); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 16px; 
+      border: 1px solid var(--border); 
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.08); 
+    }
     
-      Log Work Entry
-      
-        
-          
-            Date
-            
-          
-          
-            Job Name
-            
-          
-        
+    /* Top Global Settings Bar */
+    .settings-bar { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: var(--accent-light); 
+      padding: 12px 16px; 
+      border-radius: 10px; 
+      margin-bottom: 16px; 
+      font-size: 14px;
+      border: 1px solid var(--border);
+      color: #9a3412;
+    }
+    .settings-bar input { 
+      width: 90px; 
+      padding: 6px 8px; 
+      font-size: 14px; 
+      border-radius: 6px; 
+      border: 1px solid var(--border); 
+      margin-left: 6px;
+      text-align: right;
+    }
 
-        
-        
-          Notes & Materials (Supplies purchased, site notes, material costs, etc.)
-          
-        
-
-        
-          
-            Time In
-            
-          
-          
-            Time Out
-            
-          
-        
-
-        
-          
-            Start Miles (Morning Odometer)
-            
-          
-          
-            End Miles (Evening Odometer)
-            
-          
-        
-
-        
-          Work Done / Description
-          
-        
-
-        Add Entry
-      
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #7c2d12; }
+    .hint { font-size: 12px; font-weight: normal; color: #9a3412; margin-left: 4px; }
     
-
+    input, textarea { 
+      width: 100%; 
+      padding: 12px; 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      font-size: 15px; 
+      box-sizing: border-box; 
+      background: #ffffff;
+    }
+    input:focus, textarea:focus {
+      outline: 2px solid var(--primary);
+      border-color: var(--primary);
+    }
     
-      
-        Weekly Summary Sheet
-        Print / PDF
-      
+    textarea { 
+      min-height: 110px; 
+      resize: vertical; 
+      line-height: 1.5; 
+      font-family: inherit;
+    }
 
-      
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    
+    button { 
+      width: 100%; 
+      padding: 14px; 
+      border: none; 
+      border-radius: 8px; 
+      font-weight: bold; 
+      font-size: 16px; 
+      cursor: pointer; 
+      color: white; 
+      background: var(--primary); 
+      margin-top: 8px; 
+      transition: background 0.2s;
+    }
+    button:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #64748b; margin-top: 12px; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: #ef4444; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+    
+    .week-header { 
+      background: var(--accent-light); 
+      color: #9a3412;
+      font-weight: bold; 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      margin-top: 16px; 
+      font-size: 14px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      border: 1px solid var(--border);
+    }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #fff7ed; color: #9a3412; font-weight: 600; }
+    
+    .summary-box { 
+      background: var(--accent-light); 
+      border: 1px solid var(--border); 
+      padding: 12px 16px; 
+      border-radius: 8px; 
+      margin-top: 8px; 
+      font-size: 14px; 
+      font-weight: bold; 
+      color: #7c2d12;
+      display: flex; 
+      justify-content: space-between; 
+    }
+    
+    .desc-text { 
+      white-space: pre-wrap; 
+      word-break: break-word; 
+      color: #334155; 
+      font-size: 13px;
+      line-height: 1.4;
+    }
 
-      Clear All Saved Entries
+    .notes-box {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed #fdba74;
+      color: #9a3412;
+      font-size: 12px;
+    }
+
+    /* Print Formatting Rules */
+    @media print {
+      body { background: white !important; padding: 0 !important; color: #000 !important; }
+      .no-print { display: none !important; }
+      .card { border: none !important; box-shadow: none !important; padding: 0 !important; }
+      .container { max-width: 100% !important; }
+      th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; }
+      table { border-collapse: collapse !important; width: 100% !important; }
+      .week-header { background: #f8fafc !important; color: #000 !important; border: 1px solid #cbd5e1 !important; }
+      .summary-box { background: #f1f5f9 !important; color: #000 !important; border: 1px solid #cbd5e1 !important; }
+      .notes-box { border-top: 1px dashed #94a3b8 !important; color: #334155 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Top Global Settings Header -->
+    <div class="settings-bar no-print">
+      <span><strong>Hourly Pay Rate:</strong> Applied to all log calculations</span>
+      <div>
+        $<input type="number" id="globalPayRate" step="0.01" value="25.00"> / hr
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <h2>Log Work Entry</h2>
+      <form id="timesheetForm">
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="entryDate" required>
+          </div>
+          <div class="form-group">
+            <label>Job Name</label>
+            <input type="text" id="jobName" placeholder="e.g., Smith Residence Remodel" required>
+          </div>
+        </div>
+
+        <!-- Notes & Materials Field -->
+        <div class="form-group">
+          <label>Notes & Materials <span class="hint">(Supplies purchased, site notes, material costs, etc.)</span></label>
+          <textarea id="notesMaterials" rows="4" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Time In</label>
+            <input type="time" id="timeIn" required>
+          </div>
+          <div class="form-group">
+            <label>Time Out</label>
+            <input type="time" id="timeOut" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Start Miles <span class="hint">(Morning Odometer)</span></label>
+            <input type="number" step="0.1" id="milesIn" placeholder="e.g. 50000">
+          </div>
+          <div class="form-group">
+            <label>End Miles <span class="hint">(Evening Odometer)</span></label>
+            <input type="number" step="0.1" id="milesOut" placeholder="e.g. 50085">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Work Done / Description</label>
+          <textarea id="workDone" rows="4" placeholder="Describe work completed during this shift..."></textarea>
+        </div>
+
+        <button type="submit">Add Entry</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin:0; color:#9a3412;">Weekly Summary Sheet</h3>
+        <button class="no-print" onclick="window.print()" style="width: auto; padding: 8px 16px;">Print / PDF</button>
+      </div>
+
+      <div id="weeklyContainer"></div>
+
+      <button class="btn-secondary no-print" onclick="clearAllData()">Clear All Saved Entries</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('entryDate').valueAsDate = new Date();
+
+    const rateInput = document.getElementById('globalPayRate');
+    const savedRate = localStorage.getItem('global_pay_rate') || '25.00';
+    rateInput.value = savedRate;
+
+    rateInput.addEventListener('input', function() {
+      localStorage.setItem('global_pay_rate', this.value || '0');
+      saveAndRender();
+    });
+
+    let logs = JSON.parse(localStorage.getItem('full_timesheet_logs') || '[]');
+
+    function getMonday(dateString) {
+      const d = new Date(dateString + 'T00:00:00');
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      return monday.toISOString().split('T')[0];
+    }
+
+    function addDays(dateString, days) {
+      const d = new Date(dateString + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    document.getElementById('timesheetForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const date = document.getElementById('entryDate').value;
+      const job = document.getElementById('jobName').value;
+      const notesMaterials = document.getElementById('notesMaterials').value;
+      const timeIn = document.getElementById('timeIn').value;
+      const timeOut = document.getElementById('timeOut').value;
+      const milesInRaw = document.getElementById('milesIn').value;
+      const milesOutRaw = document.getElementById('milesOut').value;
+      const milesIn = milesInRaw !== '' ? parseFloat(milesInRaw) : null;
+      const milesOut = milesOutRaw !== '' ? parseFloat(milesOutRaw) : null;
+      const workDone = document.getElementById('workDone').value;
+
+      const inParts = timeIn.split(':');
+      const outParts = timeOut.split(':');
+      const startMinutes = parseInt(inParts[0]) * 60 + parseInt(inParts[1]);
+      let endMinutes = parseInt(outParts[0]) * 60 + parseInt(outParts[1]);
+      if (endMinutes < startMinutes) endMinutes += 24 * 60;
+      const hours = ((endMinutes - startMinutes) / 60).toFixed(2);
+
+      let miles = 0;
+      if (milesIn !== null && milesOut !== null && milesOut >= milesIn) {
+        miles = (milesOut - milesIn).toFixed(1);
+      }
+
+      const entry = { id: Date.now(), date, job, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles, workDone };
+      logs.push(entry);
+      saveAndRender();
+
+      document.getElementById('jobName').value = '';
+      document.getElementById('notesMaterials').value = '';
+      document.getElementById('timeIn').value = '';
+      document.getElementById('timeOut').value = '';
+      document.getElementById('milesIn').value = '';
+      document.getElementById('milesOut').value = '';
+      document.getElementById('workDone').value = '';
+    });
+
+    function saveAndRender() {
+      logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      localStorage.setItem('full_timesheet_logs', JSON.stringify(logs));
+
+      const currentPayRate = parseFloat(localStorage.getItem('global_pay_rate') || '25.00') || 0;
+
+      const grouped = {};
+      logs.forEach(log => {
+        const mon = getMonday(log.date);
+        if (!grouped[mon]) grouped[mon] = [];
+        grouped[mon].push(log);
+      });
+
+      const container = document.getElementById('weeklyContainer');
+      container.innerHTML = '';
+
+      if (Object.keys(grouped).length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#64748b; padding:20px 0;">No logs recorded yet.</p>';
+        return;
+      }
+
+      for (const mondayDate in grouped) {
+        const sundayDate = addDays(mondayDate, 6);
+        const weekLogs = grouped[mondayDate];
+
+        let totHours = 0, totMiles = 0, totPay = 0;
+
+        const tableRows = weekLogs.map(l => {
+          const entryPay = parseFloat(l.hours) * currentPayRate;
+          totHours += parseFloat(l.hours);
+          totMiles += parseFloat(l.miles);
+          totPay += entryPay;
+
+          let milesDisplay = '-';
+          if (parseFloat(l.miles) > 0) {
+            milesDisplay = `${l.miles} mi <br><small style="color:#64748b;">(${l.milesIn}-${l.milesOut})</small>`;
+          } else if (l.milesIn !== null && l.milesOut === null) {
+            milesDisplay = `<small style="color:#64748b;">Start: ${l.milesIn}</small>`;
+          } else if (l.milesOut !== null && l.milesIn === null) {
+            milesDisplay = `<small style="color:#64748b;">End: ${l.milesOut}</small>`;
+          }
+
+          const notesHTML = l.notesMaterials ? `
+            <div class="notes-box">
+              <strong>📦 Notes / Materials:</strong><br>${l.notesMaterials}
+            </div>` : '';
+
+          return `
+            <tr>
+              <td>
+                <strong>${l.date}</strong><br>
+                <span>${l.job}</span>
+              </td>
+              <td>${l.timeIn}<br>${l.timeOut}<br><small style="color:#64748b;">(${l.hours} hrs)</small></td>
+              <td>${milesDisplay}</td>
+              <td>
+                <div class="desc-text">${l.workDone || '—'}</div>
+                ${notesHTML}
+              </td>
+              <td>$${entryPay.toFixed(2)}</td>
+              <td class="no-print">
+                <button class="btn-danger" onclick="deleteEntry(${l.id})">X</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        const weekHTML = `
+          <div class="week-header">
+            Week: ${mondayDate} (Mon) – ${sundayDate} (Sun)
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:18%;">Date / Job</th>
+                <th style="width:15%;">Times</th>
+                <th style="width:15%;">Miles</th>
+                <th style="width:38%;">Work Done & Materials</th>
+                <th style="width:10%;">Pay</th>
+                <th class="no-print" style="width:4%;"></th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+          <div class="summary-box">
+            <span>Total Hours: ${totHours.toFixed(2)} hrs</span>
+            <span>Total Miles: ${totMiles.toFixed(1)} mi</span>
+            <span>Total Pay: $${totPay.toFixed(2)}</span>
+          </div>
+        `;
+
+        container.innerHTML += weekHTML;
+      }
+    }
+
+    function deleteEntry(id) {
+      logs = logs.filter(item => item.id !== id);
+      saveAndRender();
+    }
+
+    function clearAllData() {
+      if (confirm("Are you sure you want to clear all entries?")) {
+        logs = [];
+        saveAndRender();
+      }
+    }
+
+    saveAndRender();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
