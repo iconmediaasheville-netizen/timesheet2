@@ -83,7 +83,7 @@
     }
     
     textarea { 
-      min-height: 110px; 
+      min-height: 100px; 
       resize: vertical; 
       line-height: 1.5; 
       font-family: inherit;
@@ -107,6 +107,8 @@
     button:hover { background: var(--primary-hover); }
     .btn-secondary { background: #64748b; margin-top: 12px; }
     .btn-secondary:hover { background: #475569; }
+    .btn-clear { background: #94a3b8; color: white; margin-top: 8px; }
+    .btn-clear:hover { background: #64748b; }
     .btn-danger { background: #ef4444; width: auto; padding: 6px 10px; font-size: 12px; border-radius: 6px; }
     
     .week-header { 
@@ -156,6 +158,18 @@
       font-size: 12px;
     }
 
+    .code-badge {
+      display: inline-block;
+      background: #ffedd5;
+      color: #9a3412;
+      border: 1px solid #fed7aa;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
     /* Print Formatting Rules */
     @media print {
       body { background: white !important; padding: 0 !important; color: #000 !important; }
@@ -190,15 +204,21 @@
             <input type="date" id="entryDate" required>
           </div>
           <div class="form-group">
-            <label>Job Name</label>
-            <input type="text" id="jobName" placeholder="e.g., Smith Residence Remodel" required>
+            <label>Job Name <span class="hint">(Auto-completes)</span></label>
+            <input type="text" id="jobName" list="jobList" placeholder="Type or choose job name..." required autocomplete="off">
+            <datalist id="jobList"></datalist>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>Door / Gate Code / Access Info <span class="hint">(Saved per job)</span></label>
+          <input type="text" id="doorCode" placeholder="e.g. Keypad #1234, Gate code 8890, Lockbox 4321">
         </div>
 
         <!-- Notes & Materials Field -->
         <div class="form-group">
           <label>Notes & Materials <span class="hint">(Supplies purchased, site notes, material costs, etc.)</span></label>
-          <textarea id="notesMaterials" rows="4" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
+          <textarea id="notesMaterials" rows="3" placeholder="List materials used (e.g. 2x4 lumber, 3 gal paint), receipts, or job site notes..."></textarea>
         </div>
 
         <div class="grid-2">
@@ -225,10 +245,13 @@
 
         <div class="form-group">
           <label>Work Done / Description</label>
-          <textarea id="workDone" rows="4" placeholder="Describe work completed during this shift..."></textarea>
+          <textarea id="workDone" rows="3" placeholder="Describe work completed during this shift..."></textarea>
         </div>
 
-        <button type="submit">Add Entry</button>
+        <div class="grid-2">
+          <button type="submit">Add Entry</button>
+          <button type="button" class="btn-clear" onclick="clearForm()">Clear Entry</button>
+        </div>
       </form>
     </div>
 
@@ -257,6 +280,26 @@
     });
 
     let logs = JSON.parse(localStorage.getItem('full_timesheet_logs') || '[]');
+    let jobDirectory = JSON.parse(localStorage.getItem('job_directory_db') || '{}');
+
+    function populateDatalist() {
+      const datalist = document.getElementById('jobList');
+      datalist.innerHTML = '';
+      Object.keys(jobDirectory).forEach(job => {
+        const opt = document.createElement('option');
+        opt.value = job;
+        datalist.appendChild(opt);
+      });
+    }
+    populateDatalist();
+
+    // Auto-fill door code when typing/selecting a job name
+    document.getElementById('jobName').addEventListener('input', function() {
+      const jobNameVal = this.value.trim();
+      if (jobDirectory[jobNameVal] && jobDirectory[jobNameVal].doorCode) {
+        document.getElementById('doorCode').value = jobDirectory[jobNameVal].doorCode;
+      }
+    });
 
     function getMonday(dateString) {
       const d = new Date(dateString + 'T00:00:00');
@@ -272,11 +315,24 @@
       return d.toISOString().split('T')[0];
     }
 
+    function clearForm() {
+      document.getElementById('entryDate').valueAsDate = new Date();
+      document.getElementById('jobName').value = '';
+      document.getElementById('doorCode').value = '';
+      document.getElementById('notesMaterials').value = '';
+      document.getElementById('timeIn').value = '';
+      document.getElementById('timeOut').value = '';
+      document.getElementById('milesIn').value = '';
+      document.getElementById('milesOut').value = '';
+      document.getElementById('workDone').value = '';
+    }
+
     document.getElementById('timesheetForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
       const date = document.getElementById('entryDate').value;
-      const job = document.getElementById('jobName').value;
+      const job = document.getElementById('jobName').value.trim();
+      const doorCode = document.getElementById('doorCode').value.trim();
       const notesMaterials = document.getElementById('notesMaterials').value;
       const timeIn = document.getElementById('timeIn').value;
       const timeOut = document.getElementById('timeOut').value;
@@ -285,6 +341,13 @@
       const milesIn = milesInRaw !== '' ? parseFloat(milesInRaw) : null;
       const milesOut = milesOutRaw !== '' ? parseFloat(milesOutRaw) : null;
       const workDone = document.getElementById('workDone').value;
+
+      // Update persistent job directory memory
+      if (job) {
+        jobDirectory[job] = { doorCode: doorCode };
+        localStorage.setItem('job_directory_db', JSON.stringify(jobDirectory));
+        populateDatalist();
+      }
 
       const inParts = timeIn.split(':');
       const outParts = timeOut.split(':');
@@ -298,17 +361,11 @@
         miles = (milesOut - milesIn).toFixed(1);
       }
 
-      const entry = { id: Date.now(), date, job, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles, workDone };
+      const entry = { id: Date.now(), date, job, doorCode, notesMaterials, timeIn, timeOut, hours, milesIn, milesOut, miles, workDone };
       logs.push(entry);
       saveAndRender();
 
-      document.getElementById('jobName').value = '';
-      document.getElementById('notesMaterials').value = '';
-      document.getElementById('timeIn').value = '';
-      document.getElementById('timeOut').value = '';
-      document.getElementById('milesIn').value = '';
-      document.getElementById('milesOut').value = '';
-      document.getElementById('workDone').value = '';
+      clearForm();
     });
 
     function saveAndRender() {
@@ -353,6 +410,8 @@
             milesDisplay = `<small style="color:#64748b;">End: ${l.milesOut}</small>`;
           }
 
+          const doorCodeHTML = l.doorCode ? `<div class="code-badge">🔑 Code: ${l.doorCode}</div>` : '';
+
           const notesHTML = l.notesMaterials ? `
             <div class="notes-box">
               <strong>📦 Notes / Materials:</strong><br>${l.notesMaterials}
@@ -363,6 +422,7 @@
               <td>
                 <strong>${l.date}</strong><br>
                 <span>${l.job}</span>
+                ${doorCodeHTML}
               </td>
               <td>${l.timeIn}<br>${l.timeOut}<br><small style="color:#64748b;">(${l.hours} hrs)</small></td>
               <td>${milesDisplay}</td>
@@ -412,9 +472,12 @@
     }
 
     function clearAllData() {
-      if (confirm("Are you sure you want to clear all entries?")) {
+      if (confirm("Are you sure you want to clear all entries and saved job details?")) {
         logs = [];
+        jobDirectory = {};
+        localStorage.removeItem('job_directory_db');
         saveAndRender();
+        populateDatalist();
       }
     }
 
