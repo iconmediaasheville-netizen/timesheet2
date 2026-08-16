@@ -463,12 +463,16 @@
           <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
         </div>
         <div class="form-group" style="flex: 1;">
-          <label>Time (Mins)</label>
+          <label>Time</label>
           <select id="quickTaskMins">
             <option value="0.25">15 mins (0.25h)</option>
             <option value="0.5" selected>30 mins (0.50h)</option>
             <option value="0.75">45 mins (0.75h)</option>
             <option value="1.0">1 hr (1.00h)</option>
+            <option value="1.25">1 hr 15 mins (1.25h)</option>
+            <option value="1.5">1 hr 30 mins (1.50h)</option>
+            <option value="1.75">1 hr 45 mins (1.75h)</option>
+            <option value="2.0">2 hrs (2.00h)</option>
           </select>
         </div>
       </div>
@@ -561,16 +565,19 @@
       // Look for an existing entry for today with the exact same job name
       let existingEntry = entries.find(e => e.date === todayStr && e.job.toLowerCase() === jobName.toLowerCase());
 
+      const mins = Math.round(hoursToAdd * 60);
+      const timeFormatted = mins >= 60 
+        ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
+        : `${mins}m`;
+
       if (existingEntry) {
         // Append task to description and update total hours
-        const timeFormatted = `${(hoursToAdd * 60)}m`;
         existingEntry.hours = parseFloat((existingEntry.hours + hoursToAdd).toFixed(2));
         existingEntry.desc = existingEntry.desc 
           ? `${existingEntry.desc}\n• [${timeFormatted}] ${taskDesc}` 
           : `• [${timeFormatted}] ${taskDesc}`;
       } else {
         // Create new lightweight entry if none exists for today
-        const timeFormatted = `${(hoursToAdd * 60)}m`;
         const newEntry = {
           id: Date.now(),
           date: todayStr,
