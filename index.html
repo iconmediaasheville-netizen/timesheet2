@@ -362,6 +362,34 @@
       </div>
     </div>
 
+    <!-- Quick Task Log Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">⚡ Quick Task Add</h2>
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <label>Quick Task Description</label>
+          <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label>Time (Mins)</label>
+          <select id="quickTaskMins">
+            <option value="0.25">15 mins (0.25h)</option>
+            <option value="0.5" selected>30 mins (0.50h)</option>
+            <option value="0.75">45 mins (0.75h)</option>
+            <option value="1.0">1 hr (1.00h)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>Assign to Job</label>
+          <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
+          <datalist id="existingJobsList"></datalist>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
+    </div>
+
     <!-- Entry Form -->
     <div class="card no-print">
       <h2 id="formHeader">Log New Shift</h2>
@@ -509,11 +537,75 @@
       if (el) el.innerText = text;
     }
 
+    // Populate job dropdown suggestions from previous entries
+    function updateJobDatalist() {
+      const datalist = document.getElementById('existingJobsList');
+      if (!datalist) return;
+      
+      const uniqueJobs = [...new Set(entries.map(e => e.job).filter(Boolean))];
+      datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
+    }
+
+    // Quick Task handler function
+    async function logQuickTask() {
+      const taskDesc = document.getElementById('quickTaskDesc').value.trim();
+      const jobName = document.getElementById('quickTaskJob').value.trim();
+      const hoursToAdd = parseFloat(document.getElementById('quickTaskMins').value) || 0;
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      if (!taskDesc || !jobName) {
+        alert('Please provide both a task description and job name.');
+        return;
+      }
+
+      // Look for an existing entry for today with the exact same job name
+      let existingEntry = entries.find(e => e.date === todayStr && e.job.toLowerCase() === jobName.toLowerCase());
+
+      if (existingEntry) {
+        // Append task to description and update total hours
+        const timeFormatted = `${(hoursToAdd * 60)}m`;
+        existingEntry.hours = parseFloat((existingEntry.hours + hoursToAdd).toFixed(2));
+        existingEntry.desc = existingEntry.desc 
+          ? `${existingEntry.desc}\n• [${timeFormatted}] ${taskDesc}` 
+          : `• [${timeFormatted}] ${taskDesc}`;
+      } else {
+        // Create new lightweight entry if none exists for today
+        const timeFormatted = `${(hoursToAdd * 60)}m`;
+        const newEntry = {
+          id: Date.now(),
+          date: todayStr,
+          job: jobName,
+          code: '',
+          hours: hoursToAdd,
+          timeIn: '',
+          timeOut: '',
+          breakMins: 0,
+          startMiles: 0,
+          endMiles: 0,
+          totalMiles: 0,
+          desc: `• [${timeFormatted}] ${taskDesc}`,
+          notes: ''
+        };
+        entries.push(newEntry);
+      }
+
+      await setStoredData(entries);
+      
+      // Clear inputs
+      document.getElementById('quickTaskDesc').value = '';
+      document.getElementById('quickTaskJob').value = '';
+      
+      // Refresh views
+      renderSummaries();
+      updateJobDatalist();
+    }
+
     async function initApp() {
       updateSyncStatus('Syncing...');
       entries = await getStoredData();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
+      updateJobDatalist();
       renderSummaries();
     }
 
@@ -640,6 +732,7 @@
       await setStoredData(entries);
       resetForm();
       renderSummaries();
+      updateJobDatalist();
     }
 
     function editEntry(id) {
@@ -763,7 +856,7 @@
                     ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
                     ${e.breakMins ? `<div>☕ <strong>Unpaid Break:</strong> ${e.breakMins} mins</div>` : ''}
                     ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
-                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
+                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
                     ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
                   </div>
                 </details>
@@ -788,6 +881,7 @@
         await setStoredData(entries);
         renderSummaries();
         autoFillPreviousMileage();
+        updateJobDatalist();
       }
     }
 
@@ -798,6 +892,7 @@
         renderSummaries();
         document.getElementById('entryStartMiles').value = '';
         document.getElementById('autofillTag').innerText = '';
+        updateJobDatalist();
       }
     }
 
