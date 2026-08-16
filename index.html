@@ -75,26 +75,11 @@
       color: var(--primary);
     }
 
-    .settings-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-      padding: 12px;
-      background: var(--primary-light);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
     .form-group {
       margin-bottom: 14px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-    }
-
-    .form-group.compact {
-      margin-bottom: 0;
     }
 
     label {
@@ -273,18 +258,6 @@
       </div>
     </header>
 
-    <!-- Global Rate Settings -->
-    <div class="settings-grid">
-      <div class="form-group compact">
-        <label for="hourlyWage">Hourly Wage ($/hr)</label>
-        <input type="number" id="hourlyWage" step="0.01" placeholder="25.00">
-      </div>
-      <div class="form-group compact">
-        <label for="mileageRate">IRS Mileage Rate ($/mi)</label>
-        <input type="number" id="mileageRate" step="0.001" placeholder="0.67">
-      </div>
-    </div>
-
     <!-- Main Shift Logging Form -->
     <form id="shiftForm">
       <div class="form-group">
@@ -318,23 +291,15 @@
 
     <!-- Summary & Totals Card -->
     <div class="summary-card">
-      <h3>Summary & Earnings</h3>
+      <h3>Summary & Totals</h3>
       <div class="summary-grid">
         <div class="summary-stat">
           <label>Total Hours</label>
           <div class="val" id="totalHoursVal">0.00 hrs</div>
         </div>
         <div class="summary-stat">
-          <label>Total Earnings</label>
-          <div class="val" id="totalPayVal">$0.00</div>
-        </div>
-        <div class="summary-stat">
           <label>Total Miles</label>
           <div class="val" id="totalMilesVal">0.0 mi</div>
-        </div>
-        <div class="summary-stat">
-          <label>Mileage Value</label>
-          <div class="val" id="totalMileageVal">$0.00</div>
         </div>
       </div>
       <button id="exportCsvBtn" type="button" class="export-btn">Export CSV Report</button>
@@ -348,23 +313,6 @@
   </div>
 
   <script>
-    // LocalStorage Settings Logic
-    const wageInput = document.getElementById('hourlyWage');
-    const mileageInput = document.getElementById('mileageRate');
-
-    wageInput.value = localStorage.getItem('shiftlog_wage') || '25.00';
-    mileageInput.value = localStorage.getItem('shiftlog_mileage') || '0.67';
-
-    wageInput.addEventListener('input', () => {
-      localStorage.setItem('shiftlog_wage', wageInput.value);
-      renderShifts();
-    });
-
-    mileageInput.addEventListener('input', () => {
-      localStorage.setItem('shiftlog_mileage', mileageInput.value);
-      renderShifts();
-    });
-
     // Default Date to Today
     document.getElementById('shiftDate').valueAsDate = new Date();
 
@@ -380,34 +328,25 @@
       const listEl = document.getElementById('shiftsList');
       listEl.innerHTML = '';
 
-      const wage = parseFloat(wageInput.value) || 0;
-      const mileageRate = parseFloat(mileageInput.value) || 0;
-
       let grandHours = 0;
-      let grandPay = 0;
       let grandMiles = 0;
-      let grandMileageVal = 0;
 
       if (shifts.length === 0) {
         listEl.innerHTML = '<p style="color: #94a3b8; font-size: 0.9rem; text-align: center; margin: 16px 0;">No shifts logged yet.</p>';
       } else {
         shifts.forEach((shift, index) => {
           const hours = shift.netHours || 0;
-          const pay = hours * wage;
           const miles = shift.miles || 0;
-          const mileageVal = miles * mileageRate;
 
           grandHours += hours;
-          grandPay += pay;
           grandMiles += miles;
-          grandMileageVal += mileageVal;
 
           const card = document.createElement('div');
           card.className = 'shift-card';
           card.innerHTML = `
             <div class="shift-info">
               <span class="shift-date">${shift.date} (${hours.toFixed(2)} hrs)</span>
-              <span class="shift-details">${shift.startTime} - ${shift.endTime} | ${miles} mi | $${pay.toFixed(2)}${shift.notes ? ' | ' + shift.notes : ''}</span>
+              <span class="shift-details">${shift.startTime} - ${shift.endTime} | ${miles} mi${shift.notes ? ' | ' + shift.notes : ''}</span>
             </div>
             <button class="shift-delete" title="Delete Shift" onclick="deleteShift(${index})">&times;</button>
           `;
@@ -416,9 +355,7 @@
       }
 
       document.getElementById('totalHoursVal').textContent = `${grandHours.toFixed(2)} hrs`;
-      document.getElementById('totalPayVal').textContent = `$${grandPay.toFixed(2)}`;
       document.getElementById('totalMilesVal').textContent = `${grandMiles.toFixed(1)} mi`;
-      document.getElementById('totalMileageVal').textContent = `$${grandMileageVal.toFixed(2)}`;
     }
 
     function deleteShift(index) {
@@ -469,16 +406,11 @@
         return;
       }
 
-      const wage = parseFloat(wageInput.value) || 0;
-      const mileageRate = parseFloat(mileageInput.value) || 0;
-
-      let csv = 'Date,Start Time,End Time,Net Hours,Earnings ($),Miles,Mileage Deduct ($),Notes\n';
+      let csv = 'Date,Start Time,End Time,Net Hours,Miles,Notes\n';
 
       shifts.forEach(s => {
-        const pay = (s.netHours || 0) * wage;
-        const mileageVal = (s.miles || 0) * mileageRate;
         const noteEscaped = `"${(s.notes || '').replace(/"/g, '""')}"`;
-        csv += `${s.date},${s.startTime},${s.endTime},${(s.netHours || 0).toFixed(2)},${pay.toFixed(2)},${s.miles || 0},${mileageVal.toFixed(2)},${noteEscaped}\n`;
+        csv += `${s.date},${s.startTime},${s.endTime},${(s.netHours || 0).toFixed(2)},${s.miles || 0},${noteEscaped}\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv' });
