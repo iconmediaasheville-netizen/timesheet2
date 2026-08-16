@@ -313,6 +313,13 @@
       cursor: pointer;
     }
 
+    .sync-status {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: right;
+      margin-top: 4px;
+    }
+
     @media print {
       .no-print {
         display: none !important;
@@ -324,7 +331,10 @@
 
   <div class="container">
     <div class="header-bar">
-      <h1>ShiftLog</h1>
+      <div>
+        <h1>ShiftLog</h1>
+        <div id="syncStatus" class="sync-status">Syncing...</div>
+      </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
     </div>
 
@@ -451,10 +461,54 @@
   </div>
 
   <script>
-    let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
+    const STORAGE_KEY = 'shiftlog_entries';
+    let entries = [];
 
-    // Set initial date & trigger auto-fill
+    // Set initial date
     document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+    // Helper for non-blocking storage API (falls back to localStorage)
+    async function getStoredData() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(STORAGE_KEY);
+          return res ? JSON.parse(res.value || '[]') : [];
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+
+    async function setStoredData(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(STORAGE_KEY, serialized); // Always maintain local cache
+      
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(STORAGE_KEY, serialized);
+          updateSyncStatus('Synced to Cloud');
+        } catch (e) {
+          console.warn('window.storage set error', e);
+          updateSyncStatus('Saved locally');
+        }
+      } else {
+        updateSyncStatus('Saved locally');
+      }
+    }
+
+    function updateSyncStatus(text) {
+      const el = document.getElementById('syncStatus');
+      if (el) el.innerText = text;
+    }
+
+    async function initApp() {
+      updateSyncStatus('Syncing...');
+      entries = await getStoredData();
+      updateSyncStatus('Synced');
+      autoFillPreviousMileage();
+      renderSummaries();
+    }
 
     function toggleMenu() {
       const drawer = document.getElementById('settingsDrawer');
@@ -470,14 +524,12 @@
 
       const currentDate = new Date(currentDateStr);
 
-      // Find entries that occurred strictly before selected date
       const priorEntries = entries.filter(e => {
         const eDate = new Date(e.date);
         return eDate <= currentDate && (e.endMiles || e.startMiles);
       });
 
       if (priorEntries.length > 0) {
-        // Sort to get the most recent preceding entry
         priorEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
         const prevEntry = priorEntries[0];
         const prevMiles = prevEntry.endMiles || prevEntry.startMiles;
@@ -504,7 +556,7 @@
         const [h2, m2] = timeOut.split(':').map(Number);
         let startMins = h1 * 60 + m1;
         let endMins = h2 * 60 + m2;
-        if (endMins < startMins) endMins += 24 * 60; // Overnight shift
+        if (endMins < startMins) endMins += 24 * 60;
 
         const grossMins = endMins - startMins;
         const netMins = Math.max(0, grossMins - breakMins);
@@ -523,7 +575,7 @@
           totalField.style.color = '#1e293b';
         } else {
           totalField.value = '0.0';
-          totalField.style.color = '#dc2626'; // Highlight error state
+          totalField.style.color = '#dc2626';
         }
       } else {
         totalField.value = '';
@@ -531,7 +583,7 @@
       }
     }
 
-    function saveEntry(e) {
+    async function saveEntry(e) {
       e.preventDefault();
       const editingId = document.getElementById('editingId').value;
       const newDate = document.getElementById('entryDate').value;
@@ -541,7 +593,6 @@
       const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
 
       if (editingId) {
-        // Update existing entry
         const index = entries.findIndex(item => item.id == editingId);
         if (index !== -1) {
           entries[index] = {
@@ -561,7 +612,6 @@
           };
         }
       } else {
-        // Add new entry
         const newEntry = {
           id: Date.now(),
           date: newDate,
@@ -580,7 +630,7 @@
         entries.push(newEntry);
       }
 
-      localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+      await setStoredData(entries);
       resetForm();
       renderSummaries();
     }
@@ -628,8 +678,8 @@
 
     function getWeekKey(dateStr, startOfWeek) {
       const d = new Date(dateStr + 'T00:00:00');
-      const day = d.getDay(); // 0 = Sun, 1 = Mon, ...
-      const targetStartDay = parseInt(startOfWeek, 10); // 1 = Mon, 0 = Sun
+      const day = d.getDay();
+      const targetStartDay = parseInt(startOfWeek, 10);
 
       let diff = d.getDate() - day + targetStartDay;
       if (day < targetStartDay) {
@@ -725,19 +775,19 @@
       });
     }
 
-    function deleteEntry(id) {
+    async function deleteEntry(id) {
       if (confirm('Delete this entry?')) {
         entries = entries.filter(e => e.id != id);
-        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+        await setStoredData(entries);
         renderSummaries();
         autoFillPreviousMileage();
       }
     }
 
-    function clearAllEntries() {
+    async function clearAllEntries() {
       if (confirm('Clear all entries? This action cannot be undone.')) {
         entries = [];
-        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+        await setStoredData(entries);
         renderSummaries();
         document.getElementById('entryStartMiles').value = '';
         document.getElementById('autofillTag').innerText = '';
@@ -757,9 +807,8 @@
       a.click();
     }
 
-    // Initialize auto-fill and summaries on boot
-    autoFillPreviousMileage();
-    renderSummaries();
+    // Boot app
+    initApp();
   </script>
 </body>
 </html>
