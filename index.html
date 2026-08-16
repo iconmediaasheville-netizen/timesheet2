@@ -90,6 +90,20 @@
       background: #c2410c;
     }
 
+    .btn-cancel {
+      width: 100%;
+      background: #cbd5e1;
+      color: #334155;
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 6px;
+      display: none;
+    }
+
     .top-actions {
       display: flex;
       gap: 10px;
@@ -244,8 +258,10 @@
 
     <!-- Entry Form -->
     <div class="card no-print">
-      <h2>Log New Shift</h2>
+      <h2 id="formHeader">Log New Shift</h2>
       <form id="shiftForm" onsubmit="saveEntry(event)">
+        <input type="hidden" id="editingId" value="" />
+
         <div class="row">
           <div class="form-group">
             <label>Date</label>
@@ -300,7 +316,8 @@
           <input type="text" id="entryNotes" placeholder="Additional notes..." />
         </div>
 
-        <button type="submit" class="btn-submit">Add Entry</button>
+        <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
+        <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
       </form>
     </div>
 
@@ -320,19 +337,19 @@
   </div>
 
   <script>
-    // Set default date to today
     document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
     let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
 
     function saveEntry(e) {
       e.preventDefault();
+      const editingId = document.getElementById('editingId').value;
       const newDate = document.getElementById('entryDate').value;
       const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
       let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
 
-      // Automatically chain mileage: Update previous entry's end miles if start miles are provided
-      if (startMiles > 0 && entries.length > 0) {
+      // Automatically chain mileage for new entries
+      if (!editingId && startMiles > 0 && entries.length > 0) {
         const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
         const lastEntry = sortedEntries[sortedEntries.length - 1];
 
@@ -344,28 +361,79 @@
         }
       }
 
-      const newEntry = {
-        id: Date.now(),
-        date: newDate,
-        job: document.getElementById('entryJob').value,
-        code: document.getElementById('entryCode').value,
-        hours: parseFloat(document.getElementById('entryHours').value) || 0,
-        timeIn: document.getElementById('entryTimeIn').value,
-        timeOut: document.getElementById('entryTimeOut').value,
-        startMiles: startMiles,
-        endMiles: endMiles,
-        totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
-        desc: document.getElementById('entryDesc').value,
-        notes: document.getElementById('entryNotes').value
-      };
+      if (editingId) {
+        // Update existing entry
+        const index = entries.findIndex(item => item.id == editingId);
+        if (index !== -1) {
+          entries[index] = {
+            ...entries[index],
+            date: newDate,
+            job: document.getElementById('entryJob').value,
+            code: document.getElementById('entryCode').value,
+            hours: parseFloat(document.getElementById('entryHours').value) || 0,
+            timeIn: document.getElementById('entryTimeIn').value,
+            timeOut: document.getElementById('entryTimeOut').value,
+            startMiles: startMiles,
+            endMiles: endMiles,
+            totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
+            desc: document.getElementById('entryDesc').value,
+            notes: document.getElementById('entryNotes').value
+          };
+        }
+      } else {
+        // Add new entry
+        const newEntry = {
+          id: Date.now(),
+          date: newDate,
+          job: document.getElementById('entryJob').value,
+          code: document.getElementById('entryCode').value,
+          hours: parseFloat(document.getElementById('entryHours').value) || 0,
+          timeIn: document.getElementById('entryTimeIn').value,
+          timeOut: document.getElementById('entryTimeOut').value,
+          startMiles: startMiles,
+          endMiles: endMiles,
+          totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
+          desc: document.getElementById('entryDesc').value,
+          notes: document.getElementById('entryNotes').value
+        };
+        entries.push(newEntry);
+      }
 
-      entries.push(newEntry);
       localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-      
-      document.getElementById('shiftForm').reset();
-      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
-      
+      resetForm();
       renderSummaries();
+    }
+
+    function editEntry(id) {
+      const entry = entries.find(e => e.id == id);
+      if (!entry) return;
+
+      document.getElementById('editingId').value = entry.id;
+      document.getElementById('entryDate').value = entry.date;
+      document.getElementById('entryJob').value = entry.job || '';
+      document.getElementById('entryCode').value = entry.code || '';
+      document.getElementById('entryHours').value = entry.hours || '';
+      document.getElementById('entryTimeIn').value = entry.timeIn || '';
+      document.getElementById('entryTimeOut').value = entry.timeOut || '';
+      document.getElementById('entryStartMiles').value = entry.startMiles || '';
+      document.getElementById('entryEndMiles').value = entry.endMiles || '';
+      document.getElementById('entryDesc').value = entry.desc || '';
+      document.getElementById('entryNotes').value = entry.notes || '';
+
+      document.getElementById('formHeader').innerText = 'Edit Shift Entry';
+      document.getElementById('submitBtn').innerText = 'Update Entry';
+      document.getElementById('cancelBtn').style.display = 'block';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      document.getElementById('shiftForm').reset();
+      document.getElementById('editingId').value = '';
+      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('formHeader').innerText = 'Log New Shift';
+      document.getElementById('submitBtn').innerText = 'Add Entry';
+      document.getElementById('cancelBtn').style.display = 'none';
     }
 
     function getWeekKey(dateStr) {
@@ -446,6 +514,7 @@
             </td>
             <td style="font-weight: 600;">${e.hours}</td>
             <td class="no-print" style="white-space: nowrap;">
+              <button class="action-btn" onclick="editEntry(${e.id})">✏️</button>
               <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
             </td>
           </tr>`;
@@ -458,7 +527,7 @@
 
     function deleteEntry(id) {
       if (confirm('Delete this entry?')) {
-        entries = entries.filter(e => e.id !== id);
+        entries = entries.filter(e => e.id != id);
         localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
         renderSummaries();
       }
