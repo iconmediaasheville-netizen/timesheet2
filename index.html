@@ -12,24 +12,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#f97316">
 
- <!-- Inline SVG Icon (Guarantees zero 404 errors) -->
+  <!-- Inline SVG Icon (Guarantees zero 404 errors) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
   
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
   
   <link rel="manifest" href="/manifest.json" />
-  <style>
-    :root {
-      --primary: #ea580c;
-      --primary-light: #fff7ed;
-      --border: #fed7aa;
-      --text: #1e293b;
-      --bg: #fafafa;
-    }
 
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  <style>
     :root {
       --primary: #ea580c;
       --primary-light: #fff7ed;
@@ -48,59 +38,120 @@
       color: var(--text);
       margin: 0;
       padding: 16px;
+      display: flex;
+      justify-content: center;
     }
 
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    h1, h2 {
-      color: #9a3412;
-      margin-top: 0;
-    }
-
-    .card {
+    .app-container {
+      width: 100%;
+      max-width: 500px;
       background: #ffffff;
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    .form-group {
+    /* Header & Settings Navigation */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary-light);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+
+    .app-header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-container {
+      position: relative;
+    }
+
+    .hamburger-btn {
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .hamburger-btn:hover {
+      background-color: var(--primary-light);
+    }
+
+    .settings-dropdown {
+      position: absolute;
+      right: 0;
+      top: 110%;
+      width: 240px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+      z-index: 1000;
+    }
+
+    .settings-dropdown.hidden {
+      display: none;
+    }
+
+    .settings-dropdown h3 {
+      margin-top: 0;
       margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     label {
-      display: block;
-      font-size: 0.85rem;
       font-weight: 600;
-      margin-bottom: 4px;
-      color: #475569;
+      font-size: 0.9rem;
+      color: var(--text);
     }
 
-    input, textarea, select {
+    input, select, textarea {
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       font-size: 0.95rem;
+      background-color: #fff;
     }
 
-    .row {
-      display: flex;
-      gap: 10px;
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
     }
 
-    .row > div {
-      flex: 1;
+    .time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
-    .btn-submit {
+    .submit-btn {
       width: 100%;
-      background: var(--primary);
+      background-color: var(--primary);
       color: white;
       border: none;
       padding: 12px;
@@ -111,475 +162,206 @@
       margin-top: 8px;
     }
 
-    .btn-submit:hover {
-      background: #c2410c;
+    .submit-btn:hover {
+      opacity: 0.95;
     }
 
-    .btn-cancel {
-      width: 100%;
-      background: #cbd5e1;
-      color: #334155;
-      border: none;
-      padding: 8px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      margin-top: 6px;
-      display: none;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .btn-secondary {
-      padding: 8px 16px;
-      border: 1px solid #cbd5e1;
-      background: #f1f5f9;
-      border-radius: 6px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .week-card {
-      border: 1px solid var(--border);
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 20px;
-    }
-
-    .week-title {
-      margin: 0 0 8px 0;
-      font-size: 1.1rem;
-      color: #9a3412;
-    }
-
-    .week-stats-pills {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .stat-pill {
-      background: var(--primary-light);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-
-    .stat-pill.pay {
-      background: var(--primary);
-      color: #ffffff;
-      border: none;
-    }
-
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-      border: 1px solid var(--border);
+    /* Summary Card */
+    .summary-card {
+      margin-top: 20px;
+      padding: 16px;
+      background-color: var(--primary-light);
       border-radius: 8px;
+      border: 1px solid var(--border);
     }
 
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
     }
 
-    .summary-table th, 
-    .summary-table td {
-      padding: 10px 8px;
-      text-align: left;
-      border-bottom: 1px solid #ffedd5;
-      vertical-align: top;
-    }
-
-    .summary-table th {
-      background: var(--primary-light);
-      color: #9a3412;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-    }
-
-    .code-badge {
-      display: inline-block;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      color: #475569;
-    }
-
-    details.entry-details {
-      margin-top: 6px;
-    }
-
-    details.entry-details summary {
-      cursor: pointer;
-      color: var(--primary);
+    .summary-row.total {
+      border-top: 1px dashed var(--border);
+      padding-top: 8px;
+      margin-bottom: 0;
       font-weight: 700;
-      font-size: 0.78rem;
-      list-style: none;
-      display: inline-block;
-      background: var(--primary-light);
-      border: 1px solid var(--border);
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
-
-    details.entry-details summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .details-box {
-      background: #fffbf7;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 6px;
-      margin-top: 6px;
-      font-size: 0.82rem;
-      color: #334155;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    .action-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 2px 4px;
-    }
-
-    .btn-clear {
-      width: 100%;
-      padding: 12px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      color: #475569;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    @media print {
-      .no-print {
-        display: none !important;
-      }
+      color: var(--primary);
     }
   </style>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
 </head>
 <body>
 
-  <div class="container">
-    <h1>ShiftLog</h1>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>ShiftLog</h1>
 
-    <!-- Entry Form -->
-    <div class="card no-print">
-      <h2 id="formHeader">Log New Shift</h2>
-      <form id="shiftForm" onsubmit="saveEntry(event)">
-        <input type="hidden" id="editingId" value="" />
-
-        <div class="row">
+      <!-- Hamburger Settings Menu -->
+      <div class="settings-container">
+        <button id="hamburgerBtn" aria-label="Settings Menu" class="hamburger-btn">☰</button>
+        
+        <div id="settingsMenu" class="settings-dropdown hidden">
+          <h3>Settings</h3>
           <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="entryDate" required />
+            <label for="hourlyWage">Hourly Wage ($/hr)</label>
+            <input type="number" id="hourlyWage" step="0.01" placeholder="25.00">
           </div>
           <div class="form-group">
-            <label>Job Name</label>
-            <input type="text" id="entryJob" placeholder="e.g. 116 skyway drive" required />
+            <label for="mileageRate">IRS Mileage Rate ($/mi)</label>
+            <input type="number" id="mileageRate" step="0.001" placeholder="0.67">
           </div>
         </div>
+      </div>
+    </header>
 
-        <div class="row">
-          <div class="form-group">
-            <label>Notes, door codes, etc...</label>
-            <input type="text" id="entryCode" placeholder="1642" />
-          </div>
-          <div class="form-group">
-            <label>Hours Worked</label>
-            <input type="number" step="0.01" id="entryHours" placeholder="2.75" required />
-          </div>
-        </div>
+    <!-- Main Shift Logging Form -->
+    <form id="shiftForm">
+      <div class="form-group">
+        <label for="shiftDate">Date</label>
+        <input type="date" id="shiftDate" required>
+      </div>
 
-        <div class="row">
-          <div class="form-group">
-            <label>Time In</label>
-            <input type="time" id="entryTimeIn" />
-          </div>
-          <div class="form-group">
-            <label>Time Out</label>
-            <input type="time" id="entryTimeOut" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="form-group">
-            <label>Start Miles</label>
-            <input type="number" id="entryStartMiles" placeholder="0" />
-          </div>
-          <div class="form-group">
-            <label>End Miles</label>
-            <input type="number" id="entryEndMiles" placeholder="0" />
-          </div>
-        </div>
-
+      <div class="time-grid">
         <div class="form-group">
-          <label>Work Description</label>
-          <textarea id="entryDesc" rows="3" placeholder="Applied stain, installed hardware..."></textarea>
+          <label for="startTime">Start Time</label>
+          <input type="time" id="startTime" required>
         </div>
-
         <div class="form-group">
-          <label>Notes</label>
-          <input type="text" id="entryNotes" placeholder="Additional notes..." />
+          <label for="endTime">End Time</label>
+          <input type="time" id="endTime" required>
         </div>
+      </div>
 
-        <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
-        <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
-      </form>
+      <!-- Main Page Lunch/Break Dropdown -->
+      <div class="form-group">
+        <label for="breakDuration">Unpaid Break / Lunch</label>
+        <select id="breakDuration">
+          <option value="0">None</option>
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">1 hour</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="milesDriven">Miles Driven</label>
+        <input type="number" id="milesDriven" step="0.1" placeholder="0.0">
+      </div>
+
+      <div class="form-group">
+        <label for="jobNotes">Job / Notes</label>
+        <textarea id="jobNotes" rows="2" placeholder="Site details or tasks completed..."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">Log Shift</button>
+    </form>
+
+    <!-- Live Calculated Summary -->
+    <div id="summaryCard" class="summary-card" style="display: none;">
+      <div class="summary-row">
+        <span>Net Worked Time:</span>
+        <span id="summaryTime">0 hrs</span>
+      </div>
+      <div class="summary-row">
+        <span>Estimated Earnings:</span>
+        <span id="summaryPay">$0.00</span>
+      </div>
+      <div class="summary-row">
+        <span>Mileage Deduction:</span>
+        <span id="summaryMileage">$0.00</span>
+      </div>
+      <div class="summary-row total">
+        <span>Total Value:</span>
+        <span id="summaryTotal">$0.00</span>
+      </div>
     </div>
-
-    <!-- Summary Section -->
-    <h2>Weekly Log Summaries</h2>
-
-    <div class="top-actions no-print">
-      <button class="btn-secondary" onclick="exportCSV()">Manual CSV Export</button>
-      <button class="btn-secondary" onclick="window.print()">Print / PDF</button>
-    </div>
-
-    <input type="hidden" id="hourlyRate" value="40" />
-
-    <div id="summaryContainer"></div>
-
-    <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
   </div>
 
   <script>
-    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    // Hamburger Menu Toggle
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const settingsMenu = document.getElementById('settingsMenu');
 
-    let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
+    hamburgerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsMenu.classList.toggle('hidden');
+    });
 
-    function saveEntry(e) {
+    document.addEventListener('click', (e) => {
+      if (!settingsMenu.contains(e.target) && e.target !== hamburgerBtn) {
+        settingsMenu.classList.add('hidden');
+      }
+    });
+
+    // LocalStorage Settings Logic
+    const wageInput = document.getElementById('hourlyWage');
+    const mileageInput = document.getElementById('mileageRate');
+
+    wageInput.value = localStorage.getItem('shiftlog_wage') || '25.00';
+    mileageInput.value = localStorage.getItem('shiftlog_mileage') || '0.67';
+
+    wageInput.addEventListener('input', () => {
+      localStorage.setItem('shiftlog_wage', wageInput.value);
+    });
+
+    mileageInput.addEventListener('input', () => {
+      localStorage.setItem('shiftlog_mileage', mileageInput.value);
+    });
+
+    // Set Default Today's Date
+    document.getElementById('shiftDate').valueAsDate = new Date();
+
+    // Calculation & Shift Log Handling
+    const shiftForm = document.getElementById('shiftForm');
+    const summaryCard = document.getElementById('summaryCard');
+
+    shiftForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const editingId = document.getElementById('editingId').value;
-      const newDate = document.getElementById('entryDate').value;
-      const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
-      let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
 
-      // Automatically chain mileage for new entries
-      if (!editingId && startMiles > 0 && entries.length > 0) {
-        const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
-        const lastEntry = sortedEntries[sortedEntries.length - 1];
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+      const breakMinutes = parseInt(document.getElementById('breakDuration').value, 10) || 0;
+      const miles = parseFloat(document.getElementById('milesDriven').value) || 0;
 
-        if (new Date(newDate) >= new Date(lastEntry.date)) {
-          lastEntry.endMiles = startMiles;
-          lastEntry.totalMiles = lastEntry.endMiles >= (lastEntry.startMiles || 0) 
-            ? lastEntry.endMiles - (lastEntry.startMiles || 0) 
-            : 0;
-        }
+      const hourlyWage = parseFloat(wageInput.value) || 0;
+      const mileageRate = parseFloat(mileageInput.value) || 0;
+
+      if (startTime && endTime) {
+        const start = new Date(`1970-01-01T${startTime}:00`);
+        const end = new Date(`1970-01-01T${endTime}:00`);
+        
+        let diffMs = end - start;
+        if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // Overnight shift support
+
+        const grossHours = diffMs / (1000 * 60 * 60);
+        const netHours = Math.max(0, grossHours - (breakMinutes / 60));
+
+        const earnings = netHours * hourlyWage;
+        const mileageDeduction = miles * mileageRate;
+        const totalValue = earnings + mileageDeduction;
+
+        // Render Summary
+        document.getElementById('summaryTime').textContent = `${netHours.toFixed(2)} hrs`;
+        document.getElementById('summaryPay').textContent = `$${earnings.toFixed(2)}`;
+        document.getElementById('summaryMileage').textContent = `$${mileageDeduction.toFixed(2)}`;
+        document.getElementById('summaryTotal').textContent = `$${totalValue.toFixed(2)}`;
+
+        summaryCard.style.display = 'block';
       }
-
-      if (editingId) {
-        // Update existing entry
-        const index = entries.findIndex(item => item.id == editingId);
-        if (index !== -1) {
-          entries[index] = {
-            ...entries[index],
-            date: newDate,
-            job: document.getElementById('entryJob').value,
-            code: document.getElementById('entryCode').value,
-            hours: parseFloat(document.getElementById('entryHours').value) || 0,
-            timeIn: document.getElementById('entryTimeIn').value,
-            timeOut: document.getElementById('entryTimeOut').value,
-            startMiles: startMiles,
-            endMiles: endMiles,
-            totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
-            desc: document.getElementById('entryDesc').value,
-            notes: document.getElementById('entryNotes').value
-          };
-        }
-      } else {
-        // Add new entry
-        const newEntry = {
-          id: Date.now(),
-          date: newDate,
-          job: document.getElementById('entryJob').value,
-          code: document.getElementById('entryCode').value,
-          hours: parseFloat(document.getElementById('entryHours').value) || 0,
-          timeIn: document.getElementById('entryTimeIn').value,
-          timeOut: document.getElementById('entryTimeOut').value,
-          startMiles: startMiles,
-          endMiles: endMiles,
-          totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
-          desc: document.getElementById('entryDesc').value,
-          notes: document.getElementById('entryNotes').value
-        };
-        entries.push(newEntry);
-      }
-
-      localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-      resetForm();
-      renderSummaries();
-    }
-
-    function editEntry(id) {
-      const entry = entries.find(e => e.id == id);
-      if (!entry) return;
-
-      document.getElementById('editingId').value = entry.id;
-      document.getElementById('entryDate').value = entry.date;
-      document.getElementById('entryJob').value = entry.job || '';
-      document.getElementById('entryCode').value = entry.code || '';
-      document.getElementById('entryHours').value = entry.hours || '';
-      document.getElementById('entryTimeIn').value = entry.timeIn || '';
-      document.getElementById('entryTimeOut').value = entry.timeOut || '';
-      document.getElementById('entryStartMiles').value = entry.startMiles || '';
-      document.getElementById('entryEndMiles').value = entry.endMiles || '';
-      document.getElementById('entryDesc').value = entry.desc || '';
-      document.getElementById('entryNotes').value = entry.notes || '';
-
-      document.getElementById('formHeader').innerText = 'Edit Shift Entry';
-      document.getElementById('submitBtn').innerText = 'Update Entry';
-      document.getElementById('cancelBtn').style.display = 'block';
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function resetForm() {
-      document.getElementById('shiftForm').reset();
-      document.getElementById('editingId').value = '';
-      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('formHeader').innerText = 'Log New Shift';
-      document.getElementById('submitBtn').innerText = 'Add Entry';
-      document.getElementById('cancelBtn').style.display = 'none';
-    }
-
-    function getWeekKey(dateStr) {
-      const d = new Date(dateStr + 'T00:00:00');
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      return monday.toISOString().split('T')[0];
-    }
-
-    function renderSummaries() {
-      const container = document.getElementById('summaryContainer');
-      container.innerHTML = '';
-      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-
-      if (entries.length === 0) {
-        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
-        return;
-      }
-
-      const weeks = {};
-      entries.forEach(e => {
-        const wKey = getWeekKey(e.date);
-        if (!weeks[wKey]) weeks[wKey] = [];
-        weeks[wKey].push(e);
-      });
-
-      Object.keys(weeks).reverse().forEach(wKey => {
-        let wHours = 0, wMiles = 0;
-        weeks[wKey].forEach(e => {
-          wHours += parseFloat(e.hours || 0);
-          wMiles += parseFloat(e.totalMiles || 0);
-        });
-        const wPay = (wHours * rate).toFixed(2);
-
-        let html = `
-          <div class="week-card">
-            <div class="week-header">
-              <h3 class="week-title">📅 Week of ${wKey}</h3>
-              <div class="week-stats-pills">
-                <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
-                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi</span>
-                <span class="stat-pill pay">💰 $${wPay}</span>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="summary-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Job</th>
-                    <th>Hrs</th>
-                    <th class="no-print">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>`;
-
-        weeks[wKey].forEach(e => {
-          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.totalMiles || e.startMiles || e.endMiles;
-
-          html += `<tr>
-            <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
-            <td>
-              <strong>${e.job}</strong><br/>
-              ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
-              
-              ${hasDetails ? `
-                <details class="entry-details no-print">
-                  <summary>Details ▼</summary>
-                  <div class="details-box">
-                    ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
-                    ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
-                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
-                    ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
-                  </div>
-                </details>
-              ` : ''}
-            </td>
-            <td style="font-weight: 600;">${e.hours}</td>
-            <td class="no-print" style="white-space: nowrap;">
-              <button class="action-btn" onclick="editEntry(${e.id})">✏️</button>
-              <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
-            </td>
-          </tr>`;
-        });
-
-        html += `</tbody></table></div></div>`;
-        container.innerHTML += html;
-      });
-    }
-
-    function deleteEntry(id) {
-      if (confirm('Delete this entry?')) {
-        entries = entries.filter(e => e.id != id);
-        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-        renderSummaries();
-      }
-    }
-
-    function clearAllEntries() {
-      if (confirm('Clear all entries? This action cannot be undone.')) {
-        entries = [];
-        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-        renderSummaries();
-      }
-    }
-
-    function exportCSV() {
-      let csv = 'Date,Job,Code,Hours,Miles,Description,Notes\n';
-      entries.forEach(e => {
-        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', 'shiftlog_export.csv');
-      a.click();
-    }
-
-    renderSummaries();
+    });
   </script>
 </body>
 </html>
