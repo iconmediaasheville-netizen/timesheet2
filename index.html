@@ -58,9 +58,20 @@
       margin-bottom: 20px;
     }
 
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-brand svg {
+      flex-shrink: 0;
+      border-radius: 8px;
+    }
+
     .app-header h1 {
       margin: 0;
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       color: var(--primary);
     }
 
@@ -245,7 +256,21 @@
 
   <div class="app-container">
     <header class="app-header">
-      <h1>ShiftLog</h1>
+      <div class="header-brand">
+        <svg width="36" height="36" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hdrGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f97316"/>
+              <stop offset="100%" stop-color="#c2410c"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="112" fill="url(#hdrGrad)"/>
+          <path d="M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z" fill="#ffffff"/>
+          <circle cx="256" cy="230" r="90" fill="#ea580c"/>
+          <text x="256" y="262" font-size="95" font-family="sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="-2">SL</text>
+        </svg>
+        <h1>ShiftLog</h1>
+      </div>
     </header>
 
     <!-- Global Rate Settings -->
