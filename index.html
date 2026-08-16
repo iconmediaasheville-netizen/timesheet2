@@ -44,6 +44,42 @@
       margin: 0 auto;
     }
 
+    /* Header & Settings Menu */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .header-bar h1 {
+      margin: 0;
+    }
+
+    .hamburger-btn {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--primary);
+    }
+
+    .settings-drawer {
+      display: none;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .settings-drawer.open {
+      display: block;
+    }
+
     h1, h2 {
       color: #9a3412;
       margin-top: 0;
@@ -151,6 +187,7 @@
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
     .stat-pill {
@@ -268,7 +305,25 @@
 <body>
 
   <div class="container">
-    <h1>ShiftLog</h1>
+    <div class="header-bar">
+      <h1>ShiftLog</h1>
+      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Rates Settings">☰</button>
+    </div>
+
+    <!-- Hidden Settings Menu Drawer -->
+    <div id="settingsDrawer" class="settings-drawer no-print">
+      <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Rate Settings</h3>
+      <div class="row">
+        <div class="form-group">
+          <label>Hourly Rate ($/hr)</label>
+          <input type="number" id="hourlyRate" step="0.01" value="40" onchange="renderSummaries()" />
+        </div>
+        <div class="form-group">
+          <label>IRS Mileage Rate ($/mi)</label>
+          <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
+        </div>
+      </div>
+    </div>
 
     <!-- Entry Form -->
     <div class="card no-print">
@@ -343,8 +398,6 @@
       <button class="btn-secondary" onclick="window.print()">Print / PDF</button>
     </div>
 
-    <input type="hidden" id="hourlyRate" value="40" />
-
     <div id="summaryContainer"></div>
 
     <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
@@ -354,6 +407,11 @@
     document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
     let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
+
+    function toggleMenu() {
+      const drawer = document.getElementById('settingsDrawer');
+      drawer.classList.toggle('open');
+    }
 
     function saveEntry(e) {
       e.preventDefault();
@@ -462,6 +520,7 @@
       const container = document.getElementById('summaryContainer');
       container.innerHTML = '';
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
 
       if (entries.length === 0) {
         container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
@@ -482,6 +541,7 @@
           wMiles += parseFloat(e.totalMiles || 0);
         });
         const wPay = (wHours * rate).toFixed(2);
+        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
 
         let html = `
           <div class="week-card">
@@ -489,7 +549,7 @@
               <h3 class="week-title">📅 Week of ${wKey}</h3>
               <div class="week-stats-pills">
                 <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
-                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi</span>
+                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi ($${wMileageDeduction})</span>
                 <span class="stat-pill pay">💰 $${wPay}</span>
               </div>
             </div>
