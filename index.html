@@ -362,34 +362,6 @@
       </div>
     </div>
 
-    <!-- Quick Task Log Card -->
-    <div class="card no-print" style="border-left: 4px solid var(--primary);">
-      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">⚡ Quick Task Add</h2>
-      <div class="row">
-        <div class="form-group" style="flex: 2;">
-          <label>Quick Task Description</label>
-          <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
-        </div>
-        <div class="form-group" style="flex: 1;">
-          <label>Time (Mins)</label>
-          <select id="quickTaskMins">
-            <option value="0.25">15 mins (0.25h)</option>
-            <option value="0.5" selected>30 mins (0.50h)</option>
-            <option value="0.75">45 mins (0.75h)</option>
-            <option value="1.0">1 hr (1.00h)</option>
-          </select>
-        </div>
-      </div>
-      <div class="row">
-        <div class="form-group">
-          <label>Assign to Job</label>
-          <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
-          <datalist id="existingJobsList"></datalist>
-        </div>
-      </div>
-      <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
-    </div>
-
     <!-- Entry Form -->
     <div class="card no-print">
       <h2 id="formHeader">Log New Shift</h2>
@@ -480,6 +452,34 @@
         <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
         <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
       </form>
+    </div>
+
+    <!-- Quick Task Log Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">⚡ Quick Task Add</h2>
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <label>Quick Task Description</label>
+          <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label>Time (Mins)</label>
+          <select id="quickTaskMins">
+            <option value="0.25">15 mins (0.25h)</option>
+            <option value="0.5" selected>30 mins (0.50h)</option>
+            <option value="0.75">45 mins (0.75h)</option>
+            <option value="1.0">1 hr (1.00h)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>Assign to Job</label>
+          <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
+          <datalist id="existingJobsList"></datalist>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
     </div>
 
     <!-- Summary Section -->
