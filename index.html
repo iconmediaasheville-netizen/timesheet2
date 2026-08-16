@@ -52,11 +52,7 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    /* Header & Hamburger Menu */
     .app-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       border-bottom: 2px solid var(--primary-light);
       padding-bottom: 12px;
       margin-bottom: 20px;
@@ -68,51 +64,17 @@
       color: var(--primary);
     }
 
-    .settings-container {
-      position: relative;
-    }
-
-    .hamburger-btn {
-      background: none;
-      border: none;
-      font-size: 1.6rem;
-      color: var(--text);
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 6px;
-    }
-
-    .hamburger-btn:hover {
-      background-color: var(--primary-light);
-    }
-
-    .settings-dropdown {
-      position: absolute;
-      right: 0;
-      top: 110%;
-      width: 240px;
-      background: #ffffff;
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: var(--primary-light);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-      z-index: 1000;
     }
 
-    .settings-dropdown.hidden {
-      display: none;
-    }
-
-    .settings-dropdown h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      font-size: 0.95rem;
-      color: var(--primary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    /* Form Fields */
     .form-group {
       margin-bottom: 14px;
       display: flex;
@@ -120,13 +82,17 @@
       gap: 6px;
     }
 
+    .form-group.compact {
+      margin-bottom: 0;
+    }
+
     label {
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--text);
     }
 
-    input, select, textarea {
+    input, textarea {
       width: 100%;
       padding: 10px;
       border: 1px solid var(--border);
@@ -135,7 +101,7 @@
       background-color: #fff;
     }
 
-    input:focus, select:focus, textarea:focus {
+    input:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
     }
@@ -163,7 +129,6 @@
       opacity: 0.95;
     }
 
-    /* Summary Card */
     .summary-card {
       margin-top: 20px;
       padding: 16px;
@@ -218,7 +183,6 @@
       font-size: 0.9rem;
     }
 
-    /* Logged Shifts List */
     .shifts-section {
       margin-top: 24px;
     }
@@ -282,24 +246,19 @@
   <div class="app-container">
     <header class="app-header">
       <h1>ShiftLog</h1>
-
-      <!-- Hamburger Settings Menu -->
-      <div class="settings-container">
-        <button id="hamburgerBtn" aria-label="Settings Menu" class="hamburger-btn">☰</button>
-        
-        <div id="settingsMenu" class="settings-dropdown hidden">
-          <h3>Settings</h3>
-          <div class="form-group">
-            <label for="hourlyWage">Hourly Wage ($/hr)</label>
-            <input type="number" id="hourlyWage" step="0.01" placeholder="25.00">
-          </div>
-          <div class="form-group">
-            <label for="mileageRate">IRS Mileage Rate ($/mi)</label>
-            <input type="number" id="mileageRate" step="0.001" placeholder="0.67">
-          </div>
-        </div>
-      </div>
     </header>
+
+    <!-- Global Rate Settings -->
+    <div class="settings-grid">
+      <div class="form-group compact">
+        <label for="hourlyWage">Hourly Wage ($/hr)</label>
+        <input type="number" id="hourlyWage" step="0.01" placeholder="25.00">
+      </div>
+      <div class="form-group compact">
+        <label for="mileageRate">IRS Mileage Rate ($/mi)</label>
+        <input type="number" id="mileageRate" step="0.001" placeholder="0.67">
+      </div>
+    </div>
 
     <!-- Main Shift Logging Form -->
     <form id="shiftForm">
@@ -317,18 +276,6 @@
           <label for="endTime">End Time</label>
           <input type="time" id="endTime" required>
         </div>
-      </div>
-
-      <!-- Main Page Lunch/Break Dropdown -->
-      <div class="form-group">
-        <label for="breakDuration">Unpaid Break / Lunch</label>
-        <select id="breakDuration">
-          <option value="0">None</option>
-          <option value="15">15 minutes</option>
-          <option value="30">30 minutes</option>
-          <option value="45">45 minutes</option>
-          <option value="60">1 hour</option>
-        </select>
       </div>
 
       <div class="form-group">
@@ -376,21 +323,6 @@
   </div>
 
   <script>
-    // Toggle Hamburger Settings Menu
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const settingsMenu = document.getElementById('settingsMenu');
-
-    hamburgerBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      settingsMenu.classList.toggle('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!settingsMenu.contains(e.target) && e.target !== hamburgerBtn) {
-        settingsMenu.classList.add('hidden');
-      }
-    });
-
     // LocalStorage Settings Logic
     const wageInput = document.getElementById('hourlyWage');
     const mileageInput = document.getElementById('mileageRate');
@@ -449,7 +381,7 @@
           card.className = 'shift-card';
           card.innerHTML = `
             <div class="shift-info">
-              <span class="shift-date">${shift.date} (${hours.toFixed(2)} hrs${shift.breakMinutes ? `, ${shift.breakMinutes}m break` : ''})</span>
+              <span class="shift-date">${shift.date} (${hours.toFixed(2)} hrs)</span>
               <span class="shift-details">${shift.startTime} - ${shift.endTime} | ${miles} mi | $${pay.toFixed(2)}${shift.notes ? ' | ' + shift.notes : ''}</span>
             </div>
             <button class="shift-delete" title="Delete Shift" onclick="deleteShift(${index})">&times;</button>
@@ -476,7 +408,6 @@
       const date = document.getElementById('shiftDate').value;
       const startTime = document.getElementById('startTime').value;
       const endTime = document.getElementById('endTime').value;
-      const breakMinutes = parseInt(document.getElementById('breakDuration').value, 10) || 0;
       const miles = parseFloat(document.getElementById('milesDriven').value) || 0;
       const notes = document.getElementById('jobNotes').value.trim();
 
@@ -485,14 +416,12 @@
       let diffMs = end - start;
       if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
 
-      const grossHours = diffMs / (1000 * 60 * 60);
-      const netHours = Math.max(0, grossHours - (breakMinutes / 60));
+      const netHours = diffMs / (1000 * 60 * 60);
 
       const newShift = {
         date,
         startTime,
         endTime,
-        breakMinutes,
         netHours,
         miles,
         notes
@@ -504,7 +433,6 @@
       // Reset Inputs
       document.getElementById('startTime').value = '';
       document.getElementById('endTime').value = '';
-      document.getElementById('breakDuration').value = '0';
       document.getElementById('milesDriven').value = '';
       document.getElementById('jobNotes').value = '';
     });
@@ -519,13 +447,13 @@
       const wage = parseFloat(wageInput.value) || 0;
       const mileageRate = parseFloat(mileageInput.value) || 0;
 
-      let csv = 'Date,Start Time,End Time,Break (min),Net Hours,Earnings ($),Miles,Mileage Deduct ($),Notes\n';
+      let csv = 'Date,Start Time,End Time,Net Hours,Earnings ($),Miles,Mileage Deduct ($),Notes\n';
 
       shifts.forEach(s => {
         const pay = (s.netHours || 0) * wage;
         const mileageVal = (s.miles || 0) * mileageRate;
         const noteEscaped = `"${(s.notes || '').replace(/"/g, '""')}"`;
-        csv += `${s.date},${s.startTime},${s.endTime},${s.breakMinutes || 0},${(s.netHours || 0).toFixed(2)},${pay.toFixed(2)},${s.miles || 0},${mileageVal.toFixed(2)},${noteEscaped}\n`;
+        csv += `${s.date},${s.startTime},${s.endTime},${(s.netHours || 0).toFixed(2)},${pay.toFixed(2)},${s.miles || 0},${mileageVal.toFixed(2)},${noteEscaped}\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv' });
