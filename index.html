@@ -140,7 +140,6 @@
       border: none;
     }
 
-    /* Responsive Table Styling */
     .table-responsive {
       width: 100%;
       overflow-x: auto;
@@ -179,7 +178,6 @@
       color: #475569;
     }
 
-    /* Native Accordion Toggle Styling */
     details.entry-details {
       margin-top: 6px;
     }
@@ -329,12 +327,26 @@
 
     function saveEntry(e) {
       e.preventDefault();
+      const newDate = document.getElementById('entryDate').value;
       const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
-      const endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
-      
+      let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
+
+      // Automatically chain mileage: Update previous entry's end miles if start miles are provided
+      if (startMiles > 0 && entries.length > 0) {
+        const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
+        const lastEntry = sortedEntries[sortedEntries.length - 1];
+
+        if (new Date(newDate) >= new Date(lastEntry.date)) {
+          lastEntry.endMiles = startMiles;
+          lastEntry.totalMiles = lastEntry.endMiles >= (lastEntry.startMiles || 0) 
+            ? lastEntry.endMiles - (lastEntry.startMiles || 0) 
+            : 0;
+        }
+      }
+
       const newEntry = {
         id: Date.now(),
-        date: document.getElementById('entryDate').value,
+        date: newDate,
         job: document.getElementById('entryJob').value,
         code: document.getElementById('entryCode').value,
         hours: parseFloat(document.getElementById('entryHours').value) || 0,
@@ -349,8 +361,10 @@
 
       entries.push(newEntry);
       localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+      
       document.getElementById('shiftForm').reset();
       document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      
       renderSummaries();
     }
 
@@ -410,7 +424,7 @@
                 <tbody>`;
 
         weeks[wKey].forEach(e => {
-          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.totalMiles;
+          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.totalMiles || e.startMiles || e.endMiles;
 
           html += `<tr>
             <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
@@ -423,7 +437,7 @@
                   <summary>Details ▼</summary>
                   <div class="details-box">
                     ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
-                    ${e.totalMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
+                    ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
                     ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
                     ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
                   </div>
