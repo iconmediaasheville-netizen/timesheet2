@@ -375,7 +375,7 @@
           </div>
           <div class="form-group">
             <label>Job Name</label>
-            <input type="text" id="entryJob" placeholder="e.g. name or address" required />
+            <input type="text" id="entryJob" placeholder="e.g. client name or address" required />
           </div>
         </div>
 
@@ -432,6 +432,21 @@
           </div>
         </div>
 
+        <!-- Quick Task Selector -->
+        <div class="form-group">
+          <label>Quick Task Preset</label>
+          <select id="quickTaskSelect" onchange="appendQuickTask()">
+            <option value="">-- Add a quick task item --</option>
+            <option value="Cabinetry Work">Cabinetry Work</option>
+            <option value="Furniture Assembly / Disassembly">Furniture Assembly / Disassembly</option>
+            <option value="Hardware Installation">Hardware Installation</option>
+            <option value="Trim & Millwork">Trim & Millwork</option>
+            <option value="On-site Measurement & Estimate">On-site Measurement & Estimate</option>
+            <option value="Material Pickup / Delivery">Material Pickup / Delivery</option>
+            <option value="Site Cleanup & Prep">Site Cleanup & Prep</option>
+          </select>
+        </div>
+
         <div class="form-group">
           <label>Work Description</label>
           <textarea id="entryDesc" rows="3" placeholder="Description of work performed..."></textarea>
@@ -439,7 +454,7 @@
 
         <div class="form-group">
           <label>Materials & Notes</label>
-          <textarea id="entryNotes" rows="5" placeholder="Materials used, additional job notes..."></textarea>
+          <textarea id="entryNotes" rows="4" placeholder="Materials used, additional job notes..."></textarea>
         </div>
 
         <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
@@ -467,7 +482,6 @@
     // Set initial date
     document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
-    // Helper for non-blocking storage API (falls back to localStorage)
     async function getStoredData() {
       if (window.storage && typeof window.storage.get === 'function') {
         try {
@@ -482,7 +496,7 @@
 
     async function setStoredData(data) {
       const serialized = JSON.stringify(data);
-      localStorage.setItem(STORAGE_KEY, serialized); // Always maintain local cache
+      localStorage.setItem(STORAGE_KEY, serialized);
       
       if (window.storage && typeof window.storage.set === 'function') {
         try {
@@ -513,6 +527,21 @@
     function toggleMenu() {
       const drawer = document.getElementById('settingsDrawer');
       drawer.classList.toggle('open');
+    }
+
+    function appendQuickTask() {
+      const select = document.getElementById('quickTaskSelect');
+      const taskVal = select.value;
+      if (!taskVal) return;
+
+      const descBox = document.getElementById('entryDesc');
+      if (descBox.value.trim().length > 0) {
+        descBox.value += `, ${taskVal}`;
+      } else {
+        descBox.value = taskVal;
+      }
+
+      select.selectedIndex = 0; // Reset selector
     }
 
     function autoFillPreviousMileage() {
