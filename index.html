@@ -1,697 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShiftLog by imassoft</title>
-  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShiftLog - Weekly Log Summaries</title>
   <style>
     :root {
       --primary: #ea580c;
-      --primary-hover: #c2410c;
-      --bg: #fffbf7;
-      --card-bg: #ffffff;
+      --primary-light: #fff7ed;
       --border: #fed7aa;
-      --text: #2d3748;
-      --clock-bg: #fff7ed;
-      --clock-border: #f97316;
+      --text: #1e293b;
+      --text-muted: #64748b;
     }
 
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
-    
-    .container { max-width: 850px; margin: 0 auto; }
-    
-    header { 
-      background: linear-gradient(135deg, #ea580c, #f97316); 
-      color: white; 
-      padding: 20px; 
-      border-radius: 12px; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      flex-wrap: wrap; 
-      gap: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    .brand h1 { margin: 0; font-size: 1.6rem; font-weight: 800; }
-    .brand span { font-size: 0.85rem; opacity: 0.9; font-weight: 400; }
-
-    .rate-box { 
-      background: rgba(255,255,255,0.2); 
-      padding: 6px 12px; 
-      border-radius: 8px; 
-      display: flex; 
-      align-items: center; 
-      gap: 8px; 
-      border: 1px solid rgba(255,255,255,0.3);
-    }
-    .rate-box label { font-size: 0.9rem; font-weight: 600; }
-    .rate-box input { 
-      width: 70px; 
-      padding: 4px; 
-      border-radius: 4px; 
-      border: none; 
-      font-weight: bold; 
-      text-align: center;
-    }
-    .toggle-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 0 2px; }
-
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 16px; }
-    .card h2 { margin-top: 0; color: #9a3412; font-size: 1.2rem; }
-
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    .form-group { display: flex; flex-direction: column; gap: 4px; }
-    .form-group label { font-size: 0.85rem; font-weight: 600; color: #7c2d12; }
-    input, textarea, select, button { padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
-    
-    /* Styled Time Clocks */
-    input[type="time"] {
-      background-color: var(--clock-bg);
-      border: 2px solid var(--clock-border);
-      color: #9a3412;
-      font-weight: bold;
-    }
-    input[type="time"]:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
-    }
-
-    button.primary-btn { 
-      background-color: var(--primary); 
-      color: white; 
-      border: none; 
-      font-weight: bold; 
-      cursor: pointer; 
-      margin-top: 10px;
-      width: 100%;
-    }
-    button.primary-btn:hover { background-color: var(--primary-hover); }
-
-    .quick-task-box { background: #fff7ed; border: 1px dashed var(--primary); padding: 12px; border-radius: 8px; margin-bottom: 16px; }
-
-    /* Enhanced Report & Summary Styling */
-    .week-card {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-      margin-top: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .week-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #ffedd5;
-    }
-    .week-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: #9a3412;
+    body {
+      background-color: #fafafa;
+      color: var(--text);
       margin: 0;
+      padding: 16px;
     }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      color: #9a3412;
+      margin-top: 0;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .week-card {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 20px;
+    }
+
+    .week-header {
+      margin-bottom: 10px;
+    }
+
+    .week-title {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+      color: #9a3412;
+    }
+
     .week-stats-pills {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
     }
+
     .stat-pill {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
+      background: var(--primary-light);
+      border: 1px solid var(--border);
       padding: 4px 10px;
       border-radius: 20px;
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      color: #7c2d12;
     }
+
     .stat-pill.pay {
       background: #ea580c;
-      color: white;
-      border-color: #c2410c;
+      color: #ffffff;
+      border: none;
+    }
+
+    /* Responsive Table Styling */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: 8px;
     }
 
     .summary-table {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      font-size: 0.88rem;
+      border-collapse: collapse;
+      font-size: 0.85rem;
     }
-    .summary-table th {
-      background: #ffedd5;
-      color: #7c2d12;
-      font-weight: 700;
-      text-transform: uppercase;
-      font-size: 0.72rem;
-      letter-spacing: 0.5px;
-      padding: 10px 8px;
-      border: none;
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-    }
+
+    .summary-table th, 
     .summary-table td {
       padding: 10px 8px;
-      border: none;
+      text-align: left;
       border-bottom: 1px solid #ffedd5;
-      vertical-align: middle;
+      vertical-align: top;
     }
-    .summary-table tbody tr:last-child td {
-      border-bottom: none;
+
+    .summary-table th {
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    .summary-table tbody tr:hover {
-      background-color: #fffaf0;
-    }
-    
+
     .code-badge {
       display: inline-block;
       background: #f1f5f9;
-      color: #475569;
-      font-size: 0.75rem;
+      border: 1px solid #cbd5e1;
       padding: 2px 6px;
       border-radius: 4px;
-      font-family: monospace;
-      margin-left: 4px;
-      border: 1px solid #e2e8f0;
+      font-size: 0.75rem;
+      color: #475569;
+      margin-top: 2px;
     }
-    
-    .action-btn {
-      padding: 5px 8px;
+
+    /* Native Accordion Toggle Styling */
+    details.entry-details {
+      margin-top: 6px;
+    }
+
+    details.entry-details summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.78rem;
+      list-style: none;
+      display: inline-block;
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    details.entry-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .details-box {
+      background: #fffbf7;
+      border: 1px solid var(--border);
+      padding: 10px;
       border-radius: 6px;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      color: #334155;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .action-btn {
+      background: none;
       border: none;
       cursor: pointer;
-      font-size: 0.8rem;
-      font-weight: 600;
-      transition: background 0.15s ease;
+      font-size: 1rem;
+      padding: 2px 4px;
     }
-    .action-btn.edit { background: #ffedd5; color: #c2410c; }
-    .action-btn.edit:hover { background: #fed7aa; }
-    .action-btn.delete { background: #fee2e2; color: #dc2626; margin-left: 4px; }
-    .action-btn.delete:hover { background: #fca5a5; }
 
-    /* Modal Styling */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 16px;
-    }
-    .modal-overlay.hidden { display: none; }
-    .modal-content {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 600px;
+    .btn-clear {
       width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+      padding: 12px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: #475569;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
     }
-    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .cancel-btn { background: #cbd5e1; color: #1e293b; border: none; font-weight: bold; cursor: pointer; width: 100%; }
 
     @media print {
-      header, .no-print, .action-btn, .modal-overlay { display: none !important; }
-      body { background: white; padding: 0; }
-      .card, .week-card { border: none; box-shadow: none; padding: 0; margin-top: 0; }
-      .summary-table { border: 1px solid #ccc; }
-      .summary-table th { background: #f1f5f9; color: #000; }
+      .no-print {
+        display: none !important;
+      }
     }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <header>
-    <div class="brand">
-      <h1>ShiftLog</h1>
-      <span>by imassoft</span>
+  <div class="container">
+    <h2>Weekly Log Summaries</h2>
+
+    <div class="top-actions no-print">
+      <button class="btn" onclick="exportCSV()">Manual CSV Export</button>
+      <button class="btn" onclick="window.print()">Print / PDF</button>
     </div>
-    <div class="rate-box">
-      <label for="hourlyRate">Rate ($):</label>
-      <input type="password" id="hourlyRate" value="25.00" oninput="saveRate(); renderSummaries();">
-      <button type="button" class="toggle-btn" id="rateToggle" onclick="toggleRate()">👁️</button>
-    </div>
-  </header>
 
-  <!-- Quick Task Logger -->
-  <div class="card no-print">
-    <h2>⏱️ Quick Task Logger</h2>
-    <div class="quick-task-box">
-      <div class="grid">
-        <div class="form-group">
-          <label>Task Job Name</label>
-          <input type="text" id="qtJob" placeholder="e.g. Smith Residence">
-        </div>
-        <div class="form-group">
-          <label>Hours</label>
-          <input type="number" id="qtHours" step="0.25" placeholder="1.5">
-        </div>
-        <div class="form-group">
-          <label>Task Detail</label>
-          <input type="text" id="qtDetail" placeholder="Framing back porch">
-        </div>
-      </div>
-      <button class="primary-btn" onclick="addQuickTask()" style="margin-top: 10px;">+ Add Quick Time Block</button>
-    </div>
-  </div>
+    <!-- Hidden Hourly Rate Input (Set your rate default value here) -->
+    <input type="hidden" id="hourlyRate" value="40" />
 
-  <!-- Main Entry Form -->
-  <div class="card no-print">
-    <h2>Log Work Shift</h2>
-    <form id="entryForm" onsubmit="saveEntry(event)">
-      <div class="grid">
-        <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="entryDate" required onchange="autoFillMilesAndCode()">
-        </div>
-        <div class="form-group">
-          <label>Job Name</label>
-          <input type="text" id="jobName" list="jobHistory" required placeholder="Select or type job" onchange="autoFillCode()">
-          <datalist id="jobHistory"></datalist>
-        </div>
-        <div class="form-group">
-          <label>Door / Gate Code & Notes</label>
-          <input type="text" id="doorCode" placeholder="e.g. #1234, Key under mat">
-        </div>
-        <div class="form-group">
-          <label>Time In ⏰</label>
-          <input type="time" id="timeIn" required onchange="calcHours()">
-        </div>
-        <div class="form-group">
-          <label>Time Out ⏰</label>
-          <input type="time" id="timeOut" required onchange="calcHours()">
-        </div>
-        <div class="form-group">
-          <label>Total Hours Worked</label>
-          <input type="number" id="totalHours" step="0.01" readonly style="background: #f1f5f9;">
-        </div>
-        <div class="form-group">
-          <label>Start Miles</label>
-          <input type="number" id="startMiles" step="0.1" placeholder="Odometer start">
-        </div>
-        <div class="form-group">
-          <label>End Miles</label>
-          <input type="number" id="endMiles" step="0.1" placeholder="Odometer end">
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-top: 10px;">
-        <label>Notes & Materials Purchased</label>
-        <input type="text" id="notes" placeholder="Receipts, materials bought, or site notes">
-      </div>
-
-      <div class="form-group" style="margin-top: 10px;">
-        <label>Work Description / Quick Task Logs</label>
-        <textarea id="workDesc" rows="3" placeholder="Summary of work completed"></textarea>
-      </div>
-
-      <button type="submit" class="primary-btn">Add Final Entry</button>
-    </form>
-  </div>
-
-  <!-- Data Display & Summaries -->
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;" class="no-print">
-      <h2 style="margin: 0;">Weekly Log Summaries</h2>
-      <div style="display: flex; gap: 8px;">
-        <button onclick="exportCSV()">Manual CSV Export</button>
-        <button onclick="window.print()">Print / PDF</button>
-      </div>
-    </div>
     <div id="summaryContainer"></div>
-    <button onclick="clearAllData()" class="no-print" style="margin-top: 20px; background: #f1f5f9; color: #64748b; border: none; width: 100%;">Clear All Saved Entries</button>
+
+    <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
   </div>
-</div>
 
-<!-- Edit Entry Modal -->
-<div id="editModal" class="modal-overlay hidden no-print">
-  <div class="modal-content">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <h2 style="margin: 0; color: #9a3412;">Edit Shift Log Entry</h2>
-      <button onclick="closeEditModal()" style="border: none; background: none; font-size: 1.2rem; cursor: pointer;">✕</button>
-    </div>
-    <form id="editForm" onsubmit="saveEditEntry(event)">
-      <div class="grid">
-        <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="editDate" required>
-        </div>
-        <div class="form-group">
-          <label>Job Name</label>
-          <input type="text" id="editJob" required>
-        </div>
-        <div class="form-group">
-          <label>Door / Gate Code & Notes</label>
-          <input type="text" id="editCode">
-        </div>
-        <div class="form-group">
-          <label>Time In ⏰</label>
-          <input type="time" id="editTimeIn" required onchange="calcEditHours()">
-        </div>
-        <div class="form-group">
-          <label>Time Out ⏰</label>
-          <input type="time" id="editTimeOut" required onchange="calcEditHours()">
-        </div>
-        <div class="form-group">
-          <label>Total Hours</label>
-          <input type="number" id="editHours" step="0.01" readonly style="background: #f1f5f9;">
-        </div>
-        <div class="form-group">
-          <label>Start Miles</label>
-          <input type="number" id="editStartMiles" step="0.1">
-        </div>
-        <div class="form-group">
-          <label>End Miles</label>
-          <input type="number" id="editEndMiles" step="0.1">
-        </div>
-      </div>
-      <div class="form-group" style="margin-top: 10px;">
-        <label>Notes & Materials</label>
-        <input type="text" id="editNotes">
-      </div>
-      <div class="form-group" style="margin-top: 10px;">
-        <label>Work Description</label>
-        <textarea id="editDesc" rows="3"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="submit" class="primary-btn" style="margin-top:0;">Save Changes</button>
-        <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>
-      </div>
-    </form>
-  </div>
-</div>
+  <script>
+    // Sample state data fallback
+    let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [
+      {
+        id: 1,
+        date: '2026-08-15',
+        job: '116 skyway drive',
+        code: '1642',
+        hours: 2.75,
+        totalMiles: 0,
+        startMiles: 0,
+        endMiles: 0,
+        timeIn: '09:00',
+        timeOut: '11:45',
+        desc: 'Put Polly on cabinet side, Poly interior of cabinet picked up cabinet hardware and cover two and a half down and center to the style. Almost an inch and a quarter applied stain to the front of the cabinet. Put poly in the bottom of the inside. Installed outlet cover',
+        notes: 'Outlet outlet cover door hardware'
+      }
+    ];
 
-<script>
-  let entries = JSON.parse(localStorage.getItem('shiftlog_entries') || '[]');
-  let jobDirectory = JSON.parse(localStorage.getItem('shiftlog_jobs') || '{}');
-  let editingId = null;
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('entryDate').valueAsDate = new Date();
-    const savedRate = localStorage.getItem('shiftlog_rate');
-    if (savedRate) document.getElementById('hourlyRate').value = savedRate;
-    updateJobDatalist();
-    autoFillMilesAndCode();
-    renderSummaries();
-  });
-
-  function toggleRate() {
-    const rateInput = document.getElementById('hourlyRate');
-    const btn = document.getElementById('rateToggle');
-    if (rateInput.type === 'password') {
-      rateInput.type = 'text';
-      btn.textContent = '🔒';
-    } else {
-      rateInput.type = 'password';
-      btn.textContent = '👁️';
-    }
-  }
-
-  function saveRate() {
-    localStorage.setItem('shiftlog_rate', document.getElementById('hourlyRate').value);
-  }
-
-  function calcHours() {
-    const tIn = document.getElementById('timeIn').value;
-    const tOut = document.getElementById('timeOut').value;
-    if (tIn && tOut) {
-      const start = new Date(`1970-01-01T${tIn}:00`);
-      const end = new Date(`1970-01-01T${tOut}:00`);
-      let diff = (end - start) / (1000 * 60 * 60);
-      if (diff < 0) diff += 24;
-      document.getElementById('totalHours').value = diff.toFixed(2);
-    }
-  }
-
-  function addQuickTask() {
-    const job = document.getElementById('qtJob').value;
-    const hrs = document.getElementById('qtHours').value;
-    const detail = document.getElementById('qtDetail').value;
-    if (!hrs) return alert('Please enter task hours');
-
-    const descField = document.getElementById('workDesc');
-    const logLine = `[${job || 'Task'}: ${hrs} hrs - ${detail}]`;
-    descField.value = descField.value ? `${descField.value} ${logLine}` : logLine;
-
-    document.getElementById('qtJob').value = '';
-    document.getElementById('qtHours').value = '';
-    document.getElementById('qtDetail').value = '';
-  }
-
-  function autoFillMilesAndCode() {
-    if (entries.length > 0) {
-      const lastEntry = entries[entries.length - 1];
-      if (lastEntry.endMiles) document.getElementById('startMiles').value = lastEntry.endMiles;
-    }
-    autoFillCode();
-  }
-
-  function autoFillCode() {
-    const jName = document.getElementById('jobName').value;
-    if (jobDirectory[jName]) document.getElementById('doorCode').value = jobDirectory[jName];
-  }
-
-  function updateJobDatalist() {
-    const dl = document.getElementById('jobHistory');
-    dl.innerHTML = '';
-    Object.keys(jobDirectory).forEach(job => {
-      const opt = document.createElement('option');
-      opt.value = job;
-      dl.appendChild(opt);
-    });
-  }
-
-  function saveEntry(e) {
-    e.preventDefault();
-    const jName = document.getElementById('jobName').value;
-    const dCode = document.getElementById('doorCode').value;
-    
-    if (jName && dCode) {
-      jobDirectory[jName] = dCode;
-      localStorage.setItem('shiftlog_jobs', JSON.stringify(jobDirectory));
-      updateJobDatalist();
+    function getWeekKey(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+      const monday = new Date(d.setDate(diff));
+      return monday.toISOString().split('T')[0];
     }
 
-    const sMiles = parseFloat(document.getElementById('startMiles').value) || 0;
-    const eMiles = parseFloat(document.getElementById('endMiles').value) || 0;
-    
-    const entry = {
-      id: Date.now(),
-      date: document.getElementById('entryDate').value,
-      job: jName,
-      code: dCode,
-      timeIn: document.getElementById('timeIn').value,
-      timeOut: document.getElementById('timeOut').value,
-      hours: parseFloat(document.getElementById('totalHours').value) || 0,
-      startMiles: sMiles,
-      endMiles: eMiles,
-      totalMiles: (eMiles >= sMiles) ? (eMiles - sMiles) : 0,
-      notes: document.getElementById('notes').value,
-      desc: document.getElementById('workDesc').value
-    };
+    function renderSummaries() {
+      const container = document.getElementById('summaryContainer');
+      container.innerHTML = '';
+      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
 
-    entries.push(entry);
-    localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-    renderSummaries();
-    exportCSV();
-    
-    document.getElementById('entryForm').reset();
-    document.getElementById('entryDate').valueAsDate = new Date();
-    autoFillMilesAndCode();
-  }
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
+        return;
+      }
 
-  function renderSummaries() {
-    const container = document.getElementById('summaryContainer');
-    container.innerHTML = '';
-    const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-
-    if (entries.length === 0) {
-      container.innerHTML = '<p style="color: #64748b; font-style: italic; text-align: center; margin-top: 20px;">No shift entries recorded yet.</p>';
-      return;
-    }
-
-    const weeks = {};
-    entries.forEach(e => {
-      const wKey = getWeekKey(e.date);
-      if (!weeks[wKey]) weeks[wKey] = [];
-      weeks[wKey].push(e);
-    });
-
-    Object.keys(weeks).reverse().forEach(wKey => {
-      let wHours = 0, wMiles = 0;
-      
-      // Calculate totals first
-      weeks[wKey].forEach(e => {
-        wHours += e.hours;
-        wMiles += e.totalMiles;
+      const weeks = {};
+      entries.forEach(e => {
+        const wKey = getWeekKey(e.date);
+        if (!weeks[wKey]) weeks[wKey] = [];
+        weeks[wKey].push(e);
       });
-      const wPay = (wHours * rate).toFixed(2);
 
-      let html = `
-        <div class="week-card">
-          <div class="week-header">
-            <h3 class="week-title">📅 Week of ${wKey}</h3>
-            <div class="week-stats-pills">
-              <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
-              <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi</span>
-              <span class="stat-pill pay">💰 $${wPay}</span>
+      Object.keys(weeks).reverse().forEach(wKey => {
+        let wHours = 0, wMiles = 0;
+        weeks[wKey].forEach(e => {
+          wHours += parseFloat(e.hours || 0);
+          wMiles += parseFloat(e.totalMiles || 0);
+        });
+        const wPay = (wHours * rate).toFixed(2);
+
+        let html = `
+          <div class="week-card">
+            <div class="week-header">
+              <h3 class="week-title">📅 Week of ${wKey}</h3>
+              <div class="week-stats-pills">
+                <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
+                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi</span>
+                <span class="stat-pill pay">💰 $${wPay}</span>
+              </div>
             </div>
-          </div>
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Job</th>
-                <th>Hours</th>
-                <th>Miles</th>
-                <th>Description</th>
-                <th class="no-print" style="width: 80px; text-align: center;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>`;
+            <div class="table-responsive">
+              <table class="summary-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Job</th>
+                    <th>Hrs</th>
+                    <th class="no-print">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>`;
 
-      weeks[wKey].forEach(e => {
-        html += `<tr>
-          <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
-          <td>
-            <strong>${e.job}</strong>
-            ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
-          </td>
-          <td style="font-weight: 600;">${e.hours}</td>
-          <td>${e.totalMiles}</td>
-          <td style="color: #334155;">
-            ${e.desc || '-'}
-            ${e.notes ? `<br><small style="color: #64748b;"><i>Notes: ${e.notes}</i></small>` : ''}
-          </td>
-          <td class="no-print" style="text-align: center;">
-            <button class="action-btn edit" onclick="openEditModal(${e.id})" title="Edit Entry">✏️</button>
-            <button class="action-btn delete" onclick="deleteEntry(${e.id})" title="Delete Entry">🗑️</button>
-          </td>
-        </tr>`;
+        weeks[wKey].forEach(e => {
+          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.totalMiles;
+
+          html += `<tr>
+            <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
+            <td>
+              <strong>${e.job}</strong><br/>
+              ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
+              
+              ${hasDetails ? `
+                <details class="entry-details no-print">
+                  <summary>Details ▼</summary>
+                  <div class="details-box">
+                    ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
+                    ${e.totalMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
+                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
+                    ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
+                  </div>
+                </details>
+              ` : ''}
+            </td>
+            <td style="font-weight: 600;">${e.hours}</td>
+            <td class="no-print" style="white-space: nowrap;">
+              <button class="action-btn" onclick="openEditModal(${e.id})">✏️</button>
+              <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
+            </td>
+          </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        container.innerHTML += html;
       });
-
-      html += `</tbody></table></div>`;
-      container.innerHTML += html;
-    });
-  }
-
-  function getWeekKey(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const mon = new Date(d.setDate(diff));
-    return mon.toISOString().split('T')[0];
-  }
-
-  function openEditModal(id) {
-    const entry = entries.find(e => e.id === id);
-    if (!entry) return;
-
-    editingId = id;
-    document.getElementById('editDate').value = entry.date || '';
-    document.getElementById('editJob').value = entry.job || '';
-    document.getElementById('editCode').value = entry.code || '';
-    document.getElementById('editTimeIn').value = entry.timeIn || '';
-    document.getElementById('editTimeOut').value = entry.timeOut || '';
-    document.getElementById('editHours').value = entry.hours || 0;
-    document.getElementById('editStartMiles').value = entry.startMiles || '';
-    document.getElementById('editEndMiles').value = entry.endMiles || '';
-    document.getElementById('editNotes').value = entry.notes || '';
-    document.getElementById('editDesc').value = entry.desc || '';
-
-    document.getElementById('editModal').classList.remove('hidden');
-  }
-
-  function closeEditModal() {
-    editingId = null;
-    document.getElementById('editModal').classList.add('hidden');
-  }
-
-  function calcEditHours() {
-    const tIn = document.getElementById('editTimeIn').value;
-    const tOut = document.getElementById('editTimeOut').value;
-    if (tIn && tOut) {
-      const start = new Date(`1970-01-01T${tIn}:00`);
-      const end = new Date(`1970-01-01T${tOut}:00`);
-      let diff = (end - start) / (1000 * 60 * 60);
-      if (diff < 0) diff += 24;
-      document.getElementById('editHours').value = diff.toFixed(2);
-    }
-  }
-
-  function saveEditEntry(e) {
-    e.preventDefault();
-    if (!editingId) return;
-
-    const sMiles = parseFloat(document.getElementById('editStartMiles').value) || 0;
-    const eMiles = parseFloat(document.getElementById('editEndMiles').value) || 0;
-
-    const idx = entries.findIndex(item => item.id === editingId);
-    if (idx !== -1) {
-      entries[idx] = {
-        ...entries[idx],
-        date: document.getElementById('editDate').value,
-        job: document.getElementById('editJob').value,
-        code: document.getElementById('editCode').value,
-        timeIn: document.getElementById('editTimeIn').value,
-        timeOut: document.getElementById('editTimeOut').value,
-        hours: parseFloat(document.getElementById('editHours').value) || 0,
-        startMiles: sMiles,
-        endMiles: eMiles,
-        totalMiles: (eMiles >= sMiles) ? (eMiles - sMiles) : 0,
-        notes: document.getElementById('editNotes').value,
-        desc: document.getElementById('editDesc').value
-      };
-
-      localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
-      renderSummaries();
     }
 
-    closeEditModal();
-  }
+    function deleteEntry(id) {
+      if (confirm('Delete this entry?')) {
+        entries = entries.filter(e => e.id !== id);
+        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+        renderSummaries();
+      }
+    }
 
-  function deleteEntry(id) {
-    if (!confirm("Are you sure you want to delete this entry?")) return;
-    entries = entries.filter(e => e.id !== id);
-    localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+    function clearAllEntries() {
+      if (confirm('Clear all entries? This action cannot be undone.')) {
+        entries = [];
+        localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+        renderSummaries();
+      }
+    }
+
+    function exportCSV() {
+      let csv = 'Date,Job,Code,Hours,Miles,Description,Notes\n';
+      entries.forEach(e => {
+        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'shiftlog_export.csv');
+      a.click();
+    }
+
+    function openEditModal(id) {
+      alert('Edit functionality triggered for ID: ' + id);
+    }
+
+    // Initial Render
     renderSummaries();
-  }
-
-  function clearAllData() {
-    if (confirm("Clear all logged entries and saved job settings?")) {
-      localStorage.clear();
-      entries = [];
-      jobDirectory = {};
-      renderSummaries();
-      updateJobDatalist();
-    }
-  }
-
-  function exportCSV() {
-    if (entries.length === 0) return;
-    let csv = "Date,Job Name,Door Code/Notes,Time In,Time Out,Hours,Start Miles,End Miles,Total Miles,Notes,Description\n";
-    entries.forEach(e => {
-      csv += `"${e.date}","${e.job}","${e.code}","${e.timeIn}","${e.timeOut}",${e.hours},${e.startMiles},${e.endMiles},${e.totalMiles},"${e.notes}","${e.desc}"\n`;
-    });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ShiftLog_Export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  }
-</script>
+  </script>
 </body>
 </html>
