@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ShiftLog - Weekly Log Summaries</title>
+  <title>ShiftLog - Time & Mileage Tracker</title>
   <style>
     :root {
       --primary: #ea580c;
       --primary-light: #fff7ed;
       --border: #fed7aa;
       --text: #1e293b;
-      --text-muted: #64748b;
+      --bg: #fafafa;
     }
 
     * {
       box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     body {
-      background-color: #fafafa;
+      background-color: var(--bg);
       color: var(--text);
       margin: 0;
       padding: 16px;
@@ -30,9 +30,64 @@
       margin: 0 auto;
     }
 
-    h2 {
+    h1, h2 {
       color: #9a3412;
       margin-top: 0;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #475569;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover {
+      background: #c2410c;
     }
 
     .top-actions {
@@ -41,7 +96,7 @@
       margin-bottom: 16px;
     }
 
-    .btn {
+    .btn-secondary {
       padding: 8px 16px;
       border: 1px solid #cbd5e1;
       background: #f1f5f9;
@@ -58,10 +113,6 @@
       margin-bottom: 20px;
     }
 
-    .week-header {
-      margin-bottom: 10px;
-    }
-
     .week-title {
       margin: 0 0 8px 0;
       font-size: 1.1rem;
@@ -71,7 +122,7 @@
     .week-stats-pills {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
+      margin-bottom: 12px;
     }
 
     .stat-pill {
@@ -84,7 +135,7 @@
     }
 
     .stat-pill.pay {
-      background: #ea580c;
+      background: var(--primary);
       color: #ffffff;
       border: none;
     }
@@ -93,7 +144,6 @@
     .table-responsive {
       width: 100%;
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
       border: 1px solid var(--border);
       border-radius: 8px;
     }
@@ -113,11 +163,10 @@
     }
 
     .summary-table th {
-      background: #fff7ed;
+      background: var(--primary-light);
       color: #9a3412;
       font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
 
     .code-badge {
@@ -128,7 +177,6 @@
       border-radius: 4px;
       font-size: 0.75rem;
       color: #475569;
-      margin-top: 2px;
     }
 
     /* Native Accordion Toggle Styling */
@@ -182,7 +230,6 @@
       color: #475569;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 10px;
     }
 
     @media print {
@@ -195,14 +242,78 @@
 <body>
 
   <div class="container">
+    <h1>ShiftLog</h1>
+
+    <!-- Entry Form -->
+    <div class="card no-print">
+      <h2>Log New Shift</h2>
+      <form id="shiftForm" onsubmit="saveEntry(event)">
+        <div class="row">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="entryDate" required />
+          </div>
+          <div class="form-group">
+            <label>Job Location</label>
+            <input type="text" id="entryJob" placeholder="e.g. 116 skyway drive" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Job Code</label>
+            <input type="text" id="entryCode" placeholder="1642" />
+          </div>
+          <div class="form-group">
+            <label>Hours Worked</label>
+            <input type="number" step="0.01" id="entryHours" placeholder="2.75" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Time In</label>
+            <input type="time" id="entryTimeIn" />
+          </div>
+          <div class="form-group">
+            <label>Time Out</label>
+            <input type="time" id="entryTimeOut" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Start Miles</label>
+            <input type="number" id="entryStartMiles" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label>End Miles</label>
+            <input type="number" id="entryEndMiles" placeholder="0" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Work Description</label>
+          <textarea id="entryDesc" rows="3" placeholder="Applied stain, installed hardware..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" id="entryNotes" placeholder="Additional notes..." />
+        </div>
+
+        <button type="submit" class="btn-submit">Add Entry</button>
+      </form>
+    </div>
+
+    <!-- Summary Section -->
     <h2>Weekly Log Summaries</h2>
 
     <div class="top-actions no-print">
-      <button class="btn" onclick="exportCSV()">Manual CSV Export</button>
-      <button class="btn" onclick="window.print()">Print / PDF</button>
+      <button class="btn-secondary" onclick="exportCSV()">Manual CSV Export</button>
+      <button class="btn-secondary" onclick="window.print()">Print / PDF</button>
     </div>
 
-    <!-- Hidden Hourly Rate Input (Set your rate default value here) -->
     <input type="hidden" id="hourlyRate" value="40" />
 
     <div id="summaryContainer"></div>
@@ -211,28 +322,42 @@
   </div>
 
   <script>
-    // Sample state data fallback
-    let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [
-      {
-        id: 1,
-        date: '2026-08-15',
-        job: '116 skyway drive',
-        code: '1642',
-        hours: 2.75,
-        totalMiles: 0,
-        startMiles: 0,
-        endMiles: 0,
-        timeIn: '09:00',
-        timeOut: '11:45',
-        desc: 'Put Polly on cabinet side, Poly interior of cabinet picked up cabinet hardware and cover two and a half down and center to the style. Almost an inch and a quarter applied stain to the front of the cabinet. Put poly in the bottom of the inside. Installed outlet cover',
-        notes: 'Outlet outlet cover door hardware'
-      }
-    ];
+    // Set default date to today
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+    let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
+
+    function saveEntry(e) {
+      e.preventDefault();
+      const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
+      const endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
+      
+      const newEntry = {
+        id: Date.now(),
+        date: document.getElementById('entryDate').value,
+        job: document.getElementById('entryJob').value,
+        code: document.getElementById('entryCode').value,
+        hours: parseFloat(document.getElementById('entryHours').value) || 0,
+        timeIn: document.getElementById('entryTimeIn').value,
+        timeOut: document.getElementById('entryTimeOut').value,
+        startMiles: startMiles,
+        endMiles: endMiles,
+        totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
+        desc: document.getElementById('entryDesc').value,
+        notes: document.getElementById('entryNotes').value
+      };
+
+      entries.push(newEntry);
+      localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+      document.getElementById('shiftForm').reset();
+      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      renderSummaries();
+    }
 
     function getWeekKey(dateStr) {
       const d = new Date(dateStr + 'T00:00:00');
       const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(d.setDate(diff));
       return monday.toISOString().split('T')[0];
     }
@@ -307,7 +432,6 @@
             </td>
             <td style="font-weight: 600;">${e.hours}</td>
             <td class="no-print" style="white-space: nowrap;">
-              <button class="action-btn" onclick="openEditModal(${e.id})">✏️</button>
               <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
             </td>
           </tr>`;
@@ -347,11 +471,6 @@
       a.click();
     }
 
-    function openEditModal(id) {
-      alert('Edit functionality triggered for ID: ' + id);
-    }
-
-    // Initial Render
     renderSummaries();
   </script>
 </body>
