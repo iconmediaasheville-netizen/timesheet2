@@ -112,6 +112,7 @@
       border: 1px solid #cbd5e1;
       border-radius: 6px;
       font-size: 0.95rem;
+      background-color: #ffffff;
     }
 
     .row {
@@ -356,11 +357,25 @@
         <div class="row">
           <div class="form-group">
             <label>Time In</label>
-            <input type="time" id="entryTimeIn" />
+            <input type="time" id="entryTimeIn" oninput="calculateHoursFromTimes()" />
           </div>
           <div class="form-group">
             <label>Time Out</label>
-            <input type="time" id="entryTimeOut" />
+            <input type="time" id="entryTimeOut" oninput="calculateHoursFromTimes()" />
+          </div>
+          <div class="form-group">
+            <label>Unpaid Break</label>
+            <select id="entryBreak" onchange="calculateHoursFromTimes()">
+              <option value="0">None (0m)</option>
+              <option value="15">15 mins</option>
+              <option value="30">30 mins</option>
+              <option value="45">45 mins</option>
+              <option value="60">1 hr (60m)</option>
+              <option value="75">1 hr 15m</option>
+              <option value="90">1 hr 30m</option>
+              <option value="105">1 hr 45m</option>
+              <option value="120">2 hrs (120m)</option>
+            </select>
           </div>
         </div>
 
@@ -413,6 +428,24 @@
       drawer.classList.toggle('open');
     }
 
+    function calculateHoursFromTimes() {
+      const timeIn = document.getElementById('entryTimeIn').value;
+      const timeOut = document.getElementById('entryTimeOut').value;
+      const breakMins = parseFloat(document.getElementById('entryBreak').value) || 0;
+
+      if (timeIn && timeOut) {
+        const [h1, m1] = timeIn.split(':').map(Number);
+        const [h2, m2] = timeOut.split(':').map(Number);
+        let startMins = h1 * 60 + m1;
+        let endMins = h2 * 60 + m2;
+        if (endMins < startMins) endMins += 24 * 60; // Overnight shift
+
+        const grossMins = endMins - startMins;
+        const netMins = Math.max(0, grossMins - breakMins);
+        document.getElementById('entryHours').value = (netMins / 60).toFixed(2);
+      }
+    }
+
     function saveEntry(e) {
       e.preventDefault();
       const editingId = document.getElementById('editingId').value;
@@ -445,6 +478,7 @@
             hours: parseFloat(document.getElementById('entryHours').value) || 0,
             timeIn: document.getElementById('entryTimeIn').value,
             timeOut: document.getElementById('entryTimeOut').value,
+            breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
             startMiles: startMiles,
             endMiles: endMiles,
             totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
@@ -462,6 +496,7 @@
           hours: parseFloat(document.getElementById('entryHours').value) || 0,
           timeIn: document.getElementById('entryTimeIn').value,
           timeOut: document.getElementById('entryTimeOut').value,
+          breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
           startMiles: startMiles,
           endMiles: endMiles,
           totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
@@ -487,6 +522,7 @@
       document.getElementById('entryHours').value = entry.hours || '';
       document.getElementById('entryTimeIn').value = entry.timeIn || '';
       document.getElementById('entryTimeOut').value = entry.timeOut || '';
+      document.getElementById('entryBreak').value = entry.breakMins || 0;
       document.getElementById('entryStartMiles').value = entry.startMiles || '';
       document.getElementById('entryEndMiles').value = entry.endMiles || '';
       document.getElementById('entryDesc').value = entry.desc || '';
@@ -503,6 +539,7 @@
       document.getElementById('shiftForm').reset();
       document.getElementById('editingId').value = '';
       document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('entryBreak').value = "0";
       document.getElementById('formHeader').innerText = 'Log New Shift';
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
@@ -566,7 +603,7 @@
                 <tbody>`;
 
         weeks[wKey].forEach(e => {
-          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.totalMiles || e.startMiles || e.endMiles;
+          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.breakMins || e.totalMiles || e.startMiles || e.endMiles;
 
           html += `<tr>
             <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
@@ -579,6 +616,7 @@
                   <summary>Details ▼</summary>
                   <div class="details-box">
                     ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
+                    ${e.breakMins ? `<div>☕ <strong>Unpaid Break:</strong> ${e.breakMins} mins</div>` : ''}
                     ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
                     ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
                     ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
@@ -616,9 +654,9 @@
     }
 
     function exportCSV() {
-      let csv = 'Date,Job,Code,Hours,Miles,Description,Notes\n';
+      let csv = 'Date,Job,Code,Hours,Break (mins),Miles,Description,Notes\n';
       entries.forEach(e => {
-        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
+        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.breakMins || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
