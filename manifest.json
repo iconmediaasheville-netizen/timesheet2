@@ -1,14 +1,15 @@
 {
-  "name": "Timesheet & Mileage",
-  "short_name": "Timesheet",
-  "start_url": "./index.html",
+  "name": "Shiftlog",
+  "short_name": "Shiftlog",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#fffbf7",
+  "background_color": "#f97316",
   "theme_color": "#f97316",
+  "description": "Track shifts, hours, and mileage.",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='115' fill='%23f97316'/%3E%3Ccircle cx='256' cy='256' r='170' fill='none' stroke='%23ffffff' stroke-width='28'/%3E%3Cpath d='M256 120 V256 L340 300' fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='256' cy='256' r='16' fill='%23ffffff'/%3E%3C/svg%3E",
-      "sizes": "512x512",
+      "src": "/icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
