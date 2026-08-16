@@ -129,7 +129,7 @@
 
     textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 70px;
     }
 
     .row {
@@ -139,6 +139,60 @@
 
     .row > div {
       flex: 1;
+    }
+
+    .task-builder-box {
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .task-builder-title {
+      font-weight: 700;
+      color: #9a3412;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-add-task {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .task-list-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .task-list-table th, .task-list-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #ffedd5;
+      text-align: left;
+    }
+
+    .task-list-table th {
+      background: #fed7aa;
+      color: #9a3412;
+      font-size: 0.75rem;
     }
 
     .btn-submit {
@@ -374,8 +428,8 @@
             <input type="date" id="entryDate" onchange="autoFillPreviousMileage()" required />
           </div>
           <div class="form-group">
-            <label>Job Name</label>
-            <input type="text" id="entryJob" placeholder="e.g. client name or address" required />
+            <label>Job Name / Client</label>
+            <input type="text" id="entryJob" placeholder="e.g. Smith Cabinetry" required />
           </div>
         </div>
 
@@ -385,33 +439,64 @@
             <input type="text" id="entryCode" placeholder="1642" />
           </div>
           <div class="form-group">
-            <label>Hours Worked</label>
+            <label>Total Hours Worked</label>
             <input type="number" step="0.01" id="entryHours" placeholder="0.0" required />
           </div>
         </div>
 
-        <div class="row">
-          <div class="form-group">
-            <label>Time In</label>
-            <input type="time" id="entryTimeIn" oninput="calculateHoursFromTimes()" />
+        <!-- Quick Task Builder Section -->
+        <div class="task-builder-box">
+          <div class="task-builder-title">
+            <span>⚡ Quick Task Logger (Add Multiple Sessions)</span>
           </div>
-          <div class="form-group">
-            <label>Time Out</label>
-            <input type="time" id="entryTimeOut" oninput="calculateHoursFromTimes()" />
+          
+          <div class="row">
+            <div class="form-group" style="margin-bottom:6px;">
+              <label>Task Type</label>
+              <select id="taskTypeInput">
+                <option value="Cabinetry Work">Cabinetry Work</option>
+                <option value="Bed / Furniture Assembly">Bed / Furniture Assembly</option>
+                <option value="Hardware & Trim">Hardware & Trim</option>
+                <option value="Measurement & Prep">Measurement & Prep</option>
+                <option value="Material Pickup">Material Pickup</option>
+                <option value="General Work">General Work</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:6px;">
+              <label>Time Spent</label>
+              <select id="taskDurationInput">
+                <option value="0.5">30 mins (0.5h)</option>
+                <option value="1.0" selected>1 hour (1.0h)</option>
+                <option value="1.5">1.5 hours</option>
+                <option value="2.0">2 hours</option>
+                <option value="2.5">2.5 hours</option>
+                <option value="3.0">3 hours</option>
+                <option value="0.25">15 mins (0.25h)</option>
+                <option value="0.75">45 mins (0.75h)</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Unpaid Break/Lunch</label>
-            <select id="entryBreak" onchange="calculateHoursFromTimes()">
-              <option value="0">None (0m)</option>
-              <option value="15">15 mins</option>
-              <option value="30">30 mins</option>
-              <option value="45">45 mins</option>
-              <option value="60">1 hr (60m)</option>
-              <option value="75">1 hr 15m</option>
-              <option value="90">1 hr 30m</option>
-              <option value="105">1 hr 45m</option>
-              <option value="120">2 hrs (120m)</option>
-            </select>
+
+          <div class="form-group" style="margin-bottom:6px;">
+            <label>Session Note (optional)</label>
+            <input type="text" id="taskNoteInput" placeholder="e.g. Worked on upper cabinets in morning" />
+          </div>
+
+          <button type="button" class="btn-add-task" onclick="addQuickTaskItem()">+ Add Task Line</button>
+
+          <!-- Table of added task sessions -->
+          <div id="taskListContainer" style="display:none; margin-top:8px;">
+            <table class="task-list-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Duration</th>
+                  <th>Note</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="taskListBody"></tbody>
+            </table>
           </div>
         </div>
 
@@ -432,29 +517,14 @@
           </div>
         </div>
 
-        <!-- Quick Task Selector -->
         <div class="form-group">
-          <label>Quick Task Preset</label>
-          <select id="quickTaskSelect" onchange="appendQuickTask()">
-            <option value="">-- Add a quick task item --</option>
-            <option value="Cabinetry Work">Cabinetry Work</option>
-            <option value="Furniture Assembly / Disassembly">Furniture Assembly / Disassembly</option>
-            <option value="Hardware Installation">Hardware Installation</option>
-            <option value="Trim & Millwork">Trim & Millwork</option>
-            <option value="On-site Measurement & Estimate">On-site Measurement & Estimate</option>
-            <option value="Material Pickup / Delivery">Material Pickup / Delivery</option>
-            <option value="Site Cleanup & Prep">Site Cleanup & Prep</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Work Description</label>
-          <textarea id="entryDesc" rows="3" placeholder="Description of work performed..."></textarea>
+          <label>Overall Work Description</label>
+          <textarea id="entryDesc" rows="3" placeholder="Summary or additional details..."></textarea>
         </div>
 
         <div class="form-group">
           <label>Materials & Notes</label>
-          <textarea id="entryNotes" rows="4" placeholder="Materials used, additional job notes..."></textarea>
+          <textarea id="entryNotes" rows="3" placeholder="Materials used, extra notes..."></textarea>
         </div>
 
         <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
@@ -478,6 +548,7 @@
   <script>
     const STORAGE_KEY = 'shiftlog_entries';
     let entries = [];
+    let currentTaskItems = [];
 
     // Set initial date
     document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
@@ -529,19 +600,54 @@
       drawer.classList.toggle('open');
     }
 
-    function appendQuickTask() {
-      const select = document.getElementById('quickTaskSelect');
-      const taskVal = select.value;
-      if (!taskVal) return;
+    function addQuickTaskItem() {
+      const type = document.getElementById('taskTypeInput').value;
+      const duration = parseFloat(document.getElementById('taskDurationInput').value) || 0;
+      const note = document.getElementById('taskNoteInput').value.trim();
 
-      const descBox = document.getElementById('entryDesc');
-      if (descBox.value.trim().length > 0) {
-        descBox.value += `, ${taskVal}`;
-      } else {
-        descBox.value = taskVal;
+      currentTaskItems.push({ type, duration, note });
+      document.getElementById('taskNoteInput').value = '';
+      
+      renderTaskItemsTable();
+      recalculateTotalHoursFromTasks();
+    }
+
+    function removeQuickTaskItem(index) {
+      currentTaskItems.splice(index, 1);
+      renderTaskItemsTable();
+      recalculateTotalHoursFromTasks();
+    }
+
+    function renderTaskItemsTable() {
+      const container = document.getElementById('taskListContainer');
+      const tbody = document.getElementById('taskListBody');
+
+      if (currentTaskItems.length === 0) {
+        container.style.display = 'none';
+        tbody.innerHTML = '';
+        return;
       }
 
-      select.selectedIndex = 0; // Reset selector
+      container.style.display = 'block';
+      let html = '';
+      currentTaskItems.forEach((item, idx) => {
+        html += `
+          <tr>
+            <td><strong>${item.type}</strong></td>
+            <td>${item.duration}h</td>
+            <td>${item.note || '-'}</td>
+            <td><button type="button" class="action-btn" onclick="removeQuickTaskItem(${idx})">❌</button></td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function recalculateTotalHoursFromTasks() {
+      if (currentTaskItems.length > 0) {
+        const total = currentTaskItems.reduce((sum, item) => sum + item.duration, 0);
+        document.getElementById('entryHours').value = total.toFixed(2);
+      }
     }
 
     function autoFillPreviousMileage() {
@@ -575,24 +681,6 @@
       document.getElementById('autofillTag').innerText = '';
     }
 
-    function calculateHoursFromTimes() {
-      const timeIn = document.getElementById('entryTimeIn').value;
-      const timeOut = document.getElementById('entryTimeOut').value;
-      const breakMins = parseFloat(document.getElementById('entryBreak').value) || 0;
-
-      if (timeIn && timeOut) {
-        const [h1, m1] = timeIn.split(':').map(Number);
-        const [h2, m2] = timeOut.split(':').map(Number);
-        let startMins = h1 * 60 + m1;
-        let endMins = h2 * 60 + m2;
-        if (endMins < startMins) endMins += 24 * 60;
-
-        const grossMins = endMins - startMins;
-        const netMins = Math.max(0, grossMins - breakMins);
-        document.getElementById('entryHours').value = (netMins / 60).toFixed(2);
-      }
-    }
-
     function calculateTotalMiles() {
       const start = parseFloat(document.getElementById('entryStartMiles').value);
       const end = parseFloat(document.getElementById('entryEndMiles').value);
@@ -621,42 +709,26 @@
 
       const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
 
+      const entryPayload = {
+        date: newDate,
+        job: document.getElementById('entryJob').value,
+        code: document.getElementById('entryCode').value,
+        hours: parseFloat(document.getElementById('entryHours').value) || 0,
+        taskItems: [...currentTaskItems],
+        startMiles: startMiles,
+        endMiles: endMiles,
+        totalMiles: totalMiles,
+        desc: document.getElementById('entryDesc').value,
+        notes: document.getElementById('entryNotes').value
+      };
+
       if (editingId) {
         const index = entries.findIndex(item => item.id == editingId);
         if (index !== -1) {
-          entries[index] = {
-            ...entries[index],
-            date: newDate,
-            job: document.getElementById('entryJob').value,
-            code: document.getElementById('entryCode').value,
-            hours: parseFloat(document.getElementById('entryHours').value) || 0,
-            timeIn: document.getElementById('entryTimeIn').value,
-            timeOut: document.getElementById('entryTimeOut').value,
-            breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
-            startMiles: startMiles,
-            endMiles: endMiles,
-            totalMiles: totalMiles,
-            desc: document.getElementById('entryDesc').value,
-            notes: document.getElementById('entryNotes').value
-          };
+          entries[index] = { ...entries[index], ...entryPayload };
         }
       } else {
-        const newEntry = {
-          id: Date.now(),
-          date: newDate,
-          job: document.getElementById('entryJob').value,
-          code: document.getElementById('entryCode').value,
-          hours: parseFloat(document.getElementById('entryHours').value) || 0,
-          timeIn: document.getElementById('entryTimeIn').value,
-          timeOut: document.getElementById('entryTimeOut').value,
-          breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
-          startMiles: startMiles,
-          endMiles: endMiles,
-          totalMiles: totalMiles,
-          desc: document.getElementById('entryDesc').value,
-          notes: document.getElementById('entryNotes').value
-        };
-        entries.push(newEntry);
+        entries.push({ id: Date.now(), ...entryPayload });
       }
 
       await setStoredData(entries);
@@ -673,14 +745,14 @@
       document.getElementById('entryJob').value = entry.job || '';
       document.getElementById('entryCode').value = entry.code || '';
       document.getElementById('entryHours').value = entry.hours || '';
-      document.getElementById('entryTimeIn').value = entry.timeIn || '';
-      document.getElementById('entryTimeOut').value = entry.timeOut || '';
-      document.getElementById('entryBreak').value = entry.breakMins || 0;
       document.getElementById('entryStartMiles').value = entry.startMiles || '';
       document.getElementById('entryEndMiles').value = entry.endMiles || '';
       document.getElementById('entryDesc').value = entry.desc || '';
       document.getElementById('entryNotes').value = entry.notes || '';
       document.getElementById('autofillTag').innerText = '';
+
+      currentTaskItems = entry.taskItems ? [...entry.taskItems] : [];
+      renderTaskItemsTable();
 
       calculateTotalMiles();
 
@@ -695,12 +767,14 @@
       document.getElementById('shiftForm').reset();
       document.getElementById('editingId').value = '';
       document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('entryBreak').value = "0";
       document.getElementById('entryTotalMiles').value = '';
       document.getElementById('autofillTag').innerText = '';
       document.getElementById('formHeader').innerText = 'Log New Shift';
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
+
+      currentTaskItems = [];
+      renderTaskItemsTable();
 
       autoFillPreviousMileage();
     }
@@ -770,7 +844,8 @@
                 <tbody>`;
 
         weeks[wKey].forEach(e => {
-          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.breakMins || e.totalMiles || e.startMiles || e.endMiles;
+          const hasTaskItems = e.taskItems && e.taskItems.length > 0;
+          const hasDetails = e.desc || e.notes || e.totalMiles || e.startMiles || e.endMiles || hasTaskItems;
 
           html += `<tr>
             <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
@@ -782,8 +857,14 @@
                 <details class="entry-details no-print">
                   <summary>Details ▼</summary>
                   <div class="details-box">
-                    ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
-                    ${e.breakMins ? `<div>☕ <strong>Unpaid Break:</strong> ${e.breakMins} mins</div>` : ''}
+                    ${hasTaskItems ? `
+                      <div style="margin-bottom:6px;">
+                        <strong>Task Breakdown:</strong>
+                        <ul style="margin: 4px 0; padding-left: 18px;">
+                          ${e.taskItems.map(t => `<li><b>${t.type}</b> (${t.duration}h)${t.note ? `: <i>${t.note}</i>` : ''}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
                     ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
                     ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc}</div>` : ''}
                     ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
@@ -824,9 +905,10 @@
     }
 
     function exportCSV() {
-      let csv = 'Date,Job,Code,Hours,Break (mins),Start Miles,End Miles,Total Miles,Description,Notes\n';
+      let csv = 'Date,Job,Code,Hours,Task Breakdown,Start Miles,End Miles,Total Miles,Description,Notes\n';
       entries.forEach(e => {
-        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.breakMins || 0},${e.startMiles || 0},${e.endMiles || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
+        const tasksStr = e.taskItems ? e.taskItems.map(t => `${t.type} (${t.duration}h - ${t.note || ''})`).join('; ') : '';
+        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},"${tasksStr}",${e.startMiles || 0},${e.endMiles || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
