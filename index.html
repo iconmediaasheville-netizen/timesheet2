@@ -20,7 +20,7 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
     
-    .container { max-width: 800px; margin: 0 auto; }
+    .container { max-width: 850px; margin: 0 auto; }
     
     header { 
       background: linear-gradient(135deg, #ea580c, #f97316); 
@@ -91,13 +91,110 @@
 
     .quick-task-box { background: #fff7ed; border: 1px dashed var(--primary); padding: 12px; border-radius: 8px; margin-bottom: 16px; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
-    th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
-    th { background: #ffedd5; color: #7c2d12; }
+    /* Enhanced Report & Summary Styling */
+    .week-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .week-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #ffedd5;
+    }
+    .week-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #9a3412;
+      margin: 0;
+    }
+    .week-stats-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stat-pill {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #7c2d12;
+    }
+    .stat-pill.pay {
+      background: #ea580c;
+      color: white;
+      border-color: #c2410c;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .summary-table th {
+      background: #ffedd5;
+      color: #7c2d12;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+      padding: 10px 8px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .summary-table td {
+      padding: 10px 8px;
+      border: none;
+      border-bottom: 1px solid #ffedd5;
+      vertical-align: middle;
+    }
+    .summary-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .summary-table tbody tr:hover {
+      background-color: #fffaf0;
+    }
     
-    .week-summary { background: #ffedd5; font-weight: bold; }
-    .delete-btn { color: #dc2626; border: none; background: none; cursor: pointer; font-weight: bold; }
-    .edit-btn { color: #ea580c; border: none; background: none; cursor: pointer; font-weight: bold; margin-right: 6px; }
+    .code-badge {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-left: 4px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .action-btn {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.15s ease;
+    }
+    .action-btn.edit { background: #ffedd5; color: #c2410c; }
+    .action-btn.edit:hover { background: #fed7aa; }
+    .action-btn.delete { background: #fee2e2; color: #dc2626; margin-left: 4px; }
+    .action-btn.delete:hover { background: #fca5a5; }
 
     /* Modal Styling */
     .modal-overlay {
@@ -126,9 +223,11 @@
     .cancel-btn { background: #cbd5e1; color: #1e293b; border: none; font-weight: bold; cursor: pointer; width: 100%; }
 
     @media print {
-      header, .no-print { display: none !important; }
+      header, .no-print, .action-btn, .modal-overlay { display: none !important; }
       body { background: white; padding: 0; }
-      .card { border: none; }
+      .card, .week-card { border: none; box-shadow: none; padding: 0; margin-top: 0; }
+      .summary-table { border: 1px solid #ccc; }
+      .summary-table th { background: #f1f5f9; color: #000; }
     }
   </style>
 </head>
@@ -225,8 +324,8 @@
 
   <!-- Data Display & Summaries -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;" class="no-print">
-      <h2>Weekly Log Summary</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;" class="no-print">
+      <h2 style="margin: 0;">Weekly Log Summaries</h2>
       <div style="display: flex; gap: 8px;">
         <button onclick="exportCSV()">Manual CSV Export</button>
         <button onclick="window.print()">Print / PDF</button>
@@ -419,6 +518,11 @@
     container.innerHTML = '';
     const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
 
+    if (entries.length === 0) {
+      container.innerHTML = '<p style="color: #64748b; font-style: italic; text-align: center; margin-top: 20px;">No shift entries recorded yet.</p>';
+      return;
+    }
+
     const weeks = {};
     entries.forEach(e => {
       const wKey = getWeekKey(e.date);
@@ -428,33 +532,58 @@
 
     Object.keys(weeks).reverse().forEach(wKey => {
       let wHours = 0, wMiles = 0;
-      let html = `<h3>Week of ${wKey}</h3><table>
-        <thead><tr><th>Date</th><th>Job</th><th>Hours</th><th>Miles</th><th>Description</th><th class="no-print">Actions</th></tr></thead><tbody>`;
-
+      
+      // Calculate totals first
       weeks[wKey].forEach(e => {
         wHours += e.hours;
         wMiles += e.totalMiles;
+      });
+      const wPay = (wHours * rate).toFixed(2);
+
+      let html = `
+        <div class="week-card">
+          <div class="week-header">
+            <h3 class="week-title">📅 Week of ${wKey}</h3>
+            <div class="week-stats-pills">
+              <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
+              <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi</span>
+              <span class="stat-pill pay">💰 $${wPay}</span>
+            </div>
+          </div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Job</th>
+                <th>Hours</th>
+                <th>Miles</th>
+                <th>Description</th>
+                <th class="no-print" style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      weeks[wKey].forEach(e => {
         html += `<tr>
-          <td>${e.date}</td>
-          <td>${e.job} ${e.code ? `(${e.code})` : ''}</td>
-          <td>${e.hours}</td>
+          <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
+          <td>
+            <strong>${e.job}</strong>
+            ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
+          </td>
+          <td style="font-weight: 600;">${e.hours}</td>
           <td>${e.totalMiles}</td>
-          <td>${e.desc} ${e.notes ? `<br><i>Notes: ${e.notes}</i>` : ''}</td>
-          <td class="no-print">
-            <button class="edit-btn" onclick="openEditModal(${e.id})">✏️</button>
-            <button class="delete-btn" onclick="deleteEntry(${e.id})">✕</button>
+          <td style="color: #334155;">
+            ${e.desc || '-'}
+            ${e.notes ? `<br><small style="color: #64748b;"><i>Notes: ${e.notes}</i></small>` : ''}
+          </td>
+          <td class="no-print" style="text-align: center;">
+            <button class="action-btn edit" onclick="openEditModal(${e.id})" title="Edit Entry">✏️</button>
+            <button class="action-btn delete" onclick="deleteEntry(${e.id})" title="Delete Entry">🗑️</button>
           </td>
         </tr>`;
       });
 
-      const wPay = (wHours * rate).toFixed(2);
-      html += `<tr class="week-summary">
-        <td colspan="2">Weekly Totals:</td>
-        <td>${wHours.toFixed(2)} hrs</td>
-        <td>${wMiles.toFixed(1)} mi</td>
-        <td colspan="2">Total Pay: $${wPay}</td>
-      </tr></tbody></table>`;
-
+      html += `</tbody></table></div>`;
       container.innerHTML += html;
     });
   }
@@ -534,6 +663,7 @@
   }
 
   function deleteEntry(id) {
+    if (!confirm("Are you sure you want to delete this entry?")) return;
     entries = entries.filter(e => e.id !== id);
     localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
     renderSummaries();
