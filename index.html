@@ -44,7 +44,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 500px;
+      max-width: 550px;
       background: #ffffff;
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -52,7 +52,7 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    /* Header & Settings Navigation */
+    /* Header & Hamburger Settings */
     .app-header {
       display: flex;
       justify-content: space-between;
@@ -66,9 +66,6 @@
       margin: 0;
       font-size: 1.4rem;
       color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
 
     .settings-container {
@@ -115,9 +112,9 @@
       letter-spacing: 0.5px;
     }
 
-    /* Form Fields */
+    /* Form & Controls */
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -159,7 +156,7 @@
       font-weight: 700;
       font-size: 1rem;
       cursor: pointer;
-      margin-top: 8px;
+      margin-top: 6px;
     }
 
     .submit-btn:hover {
@@ -175,19 +172,97 @@
       border: 1px solid var(--border);
     }
 
-    .summary-row {
+    .summary-card h3 {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+      color: var(--primary);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .summary-stat {
+      background: #ffffff;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .summary-stat label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .summary-stat .val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .export-btn {
+      width: 100%;
+      background-color: #ffffff;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    /* Logged Shifts List */
+    .shifts-section {
+      margin-top: 24px;
+    }
+
+    .shifts-section h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .shift-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .shift-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .shift-date {
+      font-weight: 700;
       font-size: 0.95rem;
     }
 
-    .summary-row.total {
-      border-top: 1px dashed var(--border);
-      padding-top: 8px;
-      margin-bottom: 0;
-      font-weight: 700;
-      color: var(--primary);
+    .shift-details {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .shift-delete {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
     }
   </style>
 
@@ -269,24 +344,34 @@
       <button type="submit" class="submit-btn">Log Shift</button>
     </form>
 
-    <!-- Live Calculated Summary -->
-    <div id="summaryCard" class="summary-card" style="display: none;">
-      <div class="summary-row">
-        <span>Net Worked Time:</span>
-        <span id="summaryTime">0 hrs</span>
+    <!-- Total Summary Card -->
+    <div class="summary-card">
+      <h3>Summary & Earnings</h3>
+      <div class="summary-grid">
+        <div class="summary-stat">
+          <label>Total Hours</label>
+          <div class="val" id="totalHoursVal">0.00 hrs</div>
+        </div>
+        <div class="summary-stat">
+          <label>Total Earnings</label>
+          <div class="val" id="totalPayVal">$0.00</div>
+        </div>
+        <div class="summary-stat">
+          <label>Total Miles</label>
+          <div class="val" id="totalMilesVal">0.0 mi</div>
+        </div>
+        <div class="summary-stat">
+          <label>Mileage Value</label>
+          <div class="val" id="totalMileageVal">$0.00</div>
+        </div>
       </div>
-      <div class="summary-row">
-        <span>Estimated Earnings:</span>
-        <span id="summaryPay">$0.00</span>
-      </div>
-      <div class="summary-row">
-        <span>Mileage Deduction:</span>
-        <span id="summaryMileage">$0.00</span>
-      </div>
-      <div class="summary-row total">
-        <span>Total Value:</span>
-        <span id="summaryTotal">$0.00</span>
-      </div>
+      <button id="exportCsvBtn" type="button" class="export-btn">Export CSV Report</button>
+    </div>
+
+    <!-- Logged Shifts List -->
+    <div class="shifts-section">
+      <h2>Logged Shifts</h2>
+      <div id="shiftsList"></div>
     </div>
   </div>
 
@@ -306,7 +391,7 @@
       }
     });
 
-    // LocalStorage Settings Logic
+    // Persistent Settings
     const wageInput = document.getElementById('hourlyWage');
     const mileageInput = document.getElementById('mileageRate');
 
@@ -315,53 +400,144 @@
 
     wageInput.addEventListener('input', () => {
       localStorage.setItem('shiftlog_wage', wageInput.value);
+      renderShifts();
     });
 
     mileageInput.addEventListener('input', () => {
       localStorage.setItem('shiftlog_mileage', mileageInput.value);
+      renderShifts();
     });
 
-    // Set Default Today's Date
+    // Default Date to Today
     document.getElementById('shiftDate').valueAsDate = new Date();
 
-    // Calculation & Shift Log Handling
-    const shiftForm = document.getElementById('shiftForm');
-    const summaryCard = document.getElementById('summaryCard');
+    // Data Store
+    let shifts = JSON.parse(localStorage.getItem('shiftlog_shifts') || '[]');
 
-    shiftForm.addEventListener('submit', (e) => {
+    function saveShifts() {
+      localStorage.setItem('shiftlog_shifts', JSON.stringify(shifts));
+      renderShifts();
+    }
+
+    function renderShifts() {
+      const listEl = document.getElementById('shiftsList');
+      listEl.innerHTML = '';
+
+      const wage = parseFloat(wageInput.value) || 0;
+      const mileageRate = parseFloat(mileageInput.value) || 0;
+
+      let grandHours = 0;
+      let grandPay = 0;
+      let grandMiles = 0;
+      let grandMileageVal = 0;
+
+      if (shifts.length === 0) {
+        listEl.innerHTML = '<p style="color: #94a3b8; font-size: 0.9rem; text-align: center; margin: 16px 0;">No shifts logged yet.</p>';
+      } else {
+        shifts.forEach((shift, index) => {
+          const hours = shift.netHours || 0;
+          const pay = hours * wage;
+          const miles = shift.miles || 0;
+          const mileageVal = miles * mileageRate;
+
+          grandHours += hours;
+          grandPay += pay;
+          grandMiles += miles;
+          grandMileageVal += mileageVal;
+
+          const card = document.createElement('div');
+          card.className = 'shift-card';
+          card.innerHTML = `
+            <div class="shift-info">
+              <span class="shift-date">${shift.date} (${hours.toFixed(2)} hrs${shift.breakMinutes ? `, ${shift.breakMinutes}m break` : ''})</span>
+              <span class="shift-details">${shift.startTime} - ${shift.endTime} | ${miles} mi | $${pay.toFixed(2)}${shift.notes ? ' | ' + shift.notes : ''}</span>
+            </div>
+            <button class="shift-delete" title="Delete Shift" onclick="deleteShift(${index})">&times;</button>
+          `;
+          listEl.appendChild(card);
+        });
+      }
+
+      document.getElementById('totalHoursVal').textContent = `${grandHours.toFixed(2)} hrs`;
+      document.getElementById('totalPayVal').textContent = `$${grandPay.toFixed(2)}`;
+      document.getElementById('totalMilesVal').textContent = `${grandMiles.toFixed(1)} mi`;
+      document.getElementById('totalMileageVal').textContent = `$${grandMileageVal.toFixed(2)}`;
+    }
+
+    function deleteShift(index) {
+      shifts.splice(index, 1);
+      saveShifts();
+    }
+
+    // Shift Form Submission
+    document.getElementById('shiftForm').addEventListener('submit', (e) => {
       e.preventDefault();
 
+      const date = document.getElementById('shiftDate').value;
       const startTime = document.getElementById('startTime').value;
       const endTime = document.getElementById('endTime').value;
       const breakMinutes = parseInt(document.getElementById('breakDuration').value, 10) || 0;
       const miles = parseFloat(document.getElementById('milesDriven').value) || 0;
+      const notes = document.getElementById('jobNotes').value.trim();
 
-      const hourlyWage = parseFloat(wageInput.value) || 0;
+      const start = new Date(`1970-01-01T${startTime}:00`);
+      const end = new Date(`1970-01-01T${endTime}:00`);
+      let diffMs = end - start;
+      if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
+
+      const grossHours = diffMs / (1000 * 60 * 60);
+      const netHours = Math.max(0, grossHours - (breakMinutes / 60));
+
+      const newShift = {
+        date,
+        startTime,
+        endTime,
+        breakMinutes,
+        netHours,
+        miles,
+        notes
+      };
+
+      shifts.unshift(newShift);
+      saveShifts();
+
+      // Reset form fields
+      document.getElementById('startTime').value = '';
+      document.getElementById('endTime').value = '';
+      document.getElementById('breakDuration').value = '0';
+      document.getElementById('milesDriven').value = '';
+      document.getElementById('jobNotes').value = '';
+    });
+
+    // CSV Export
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      if (shifts.length === 0) {
+        alert('No shifts to export.');
+        return;
+      }
+
+      const wage = parseFloat(wageInput.value) || 0;
       const mileageRate = parseFloat(mileageInput.value) || 0;
 
-      if (startTime && endTime) {
-        const start = new Date(`1970-01-01T${startTime}:00`);
-        const end = new Date(`1970-01-01T${endTime}:00`);
-        
-        let diffMs = end - start;
-        if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // Overnight shift support
+      let csv = 'Date,Start Time,End Time,Break (min),Net Hours,Earnings ($),Miles,Mileage Deduct ($),Notes\n';
 
-        const grossHours = diffMs / (1000 * 60 * 60);
-        const netHours = Math.max(0, grossHours - (breakMinutes / 60));
+      shifts.forEach(s => {
+        const pay = (s.netHours || 0) * wage;
+        const mileageVal = (s.miles || 0) * mileageRate;
+        const noteEscaped = `"${(s.notes || '').replace(/"/g, '""')}"`;
+        csv += `${s.date},${s.startTime},${s.endTime},${s.breakMinutes || 0},${(s.netHours || 0).toFixed(2)},${pay.toFixed(2)},${s.miles || 0},${mileageVal.toFixed(2)},${noteEscaped}\n`;
+      });
 
-        const earnings = netHours * hourlyWage;
-        const mileageDeduction = miles * mileageRate;
-        const totalValue = earnings + mileageDeduction;
-
-        // Render Summary
-        document.getElementById('summaryTime').textContent = `${netHours.toFixed(2)} hrs`;
-        document.getElementById('summaryPay').textContent = `$${earnings.toFixed(2)}`;
-        document.getElementById('summaryMileage').textContent = `$${mileageDeduction.toFixed(2)}`;
-        document.getElementById('summaryTotal').textContent = `$${totalValue.toFixed(2)}`;
-
-        summaryCard.style.display = 'block';
-      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `shiftlog_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      a.click();
     });
+
+    // Initial Load
+    renderShifts();
   </script>
 </body>
 </html>
