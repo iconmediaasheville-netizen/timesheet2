@@ -97,6 +97,33 @@
     
     .week-summary { background: #ffedd5; font-weight: bold; }
     .delete-btn { color: #dc2626; border: none; background: none; cursor: pointer; font-weight: bold; }
+    .edit-btn { color: #ea580c; border: none; background: none; cursor: pointer; font-weight: bold; margin-right: 6px; }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .cancel-btn { background: #cbd5e1; color: #1e293b; border: none; font-weight: bold; cursor: pointer; width: 100%; }
 
     @media print {
       header, .no-print { display: none !important; }
@@ -210,9 +237,68 @@
   </div>
 </div>
 
+<!-- Edit Entry Modal -->
+<div id="editModal" class="modal-overlay hidden no-print">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h2 style="margin: 0; color: #9a3412;">Edit Shift Log Entry</h2>
+      <button onclick="closeEditModal()" style="border: none; background: none; font-size: 1.2rem; cursor: pointer;">✕</button>
+    </div>
+    <form id="editForm" onsubmit="saveEditEntry(event)">
+      <div class="grid">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="editDate" required>
+        </div>
+        <div class="form-group">
+          <label>Job Name</label>
+          <input type="text" id="editJob" required>
+        </div>
+        <div class="form-group">
+          <label>Door / Gate Code & Notes</label>
+          <input type="text" id="editCode">
+        </div>
+        <div class="form-group">
+          <label>Time In ⏰</label>
+          <input type="time" id="editTimeIn" required onchange="calcEditHours()">
+        </div>
+        <div class="form-group">
+          <label>Time Out ⏰</label>
+          <input type="time" id="editTimeOut" required onchange="calcEditHours()">
+        </div>
+        <div class="form-group">
+          <label>Total Hours</label>
+          <input type="number" id="editHours" step="0.01" readonly style="background: #f1f5f9;">
+        </div>
+        <div class="form-group">
+          <label>Start Miles</label>
+          <input type="number" id="editStartMiles" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>End Miles</label>
+          <input type="number" id="editEndMiles" step="0.1">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Notes & Materials</label>
+        <input type="text" id="editNotes">
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Work Description</label>
+        <textarea id="editDesc" rows="3"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="primary-btn" style="margin-top:0;">Save Changes</button>
+        <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
   let entries = JSON.parse(localStorage.getItem('shiftlog_entries') || '[]');
   let jobDirectory = JSON.parse(localStorage.getItem('shiftlog_jobs') || '{}');
+  let editingId = null;
 
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('entryDate').valueAsDate = new Date();
@@ -343,7 +429,7 @@
     Object.keys(weeks).reverse().forEach(wKey => {
       let wHours = 0, wMiles = 0;
       let html = `<h3>Week of ${wKey}</h3><table>
-        <thead><tr><th>Date</th><th>Job</th><th>Hours</th><th>Miles</th><th>Description</th><th class="no-print"></th></tr></thead><tbody>`;
+        <thead><tr><th>Date</th><th>Job</th><th>Hours</th><th>Miles</th><th>Description</th><th class="no-print">Actions</th></tr></thead><tbody>`;
 
       weeks[wKey].forEach(e => {
         wHours += e.hours;
@@ -354,7 +440,10 @@
           <td>${e.hours}</td>
           <td>${e.totalMiles}</td>
           <td>${e.desc} ${e.notes ? `<br><i>Notes: ${e.notes}</i>` : ''}</td>
-          <td class="no-print"><button class="delete-btn" onclick="deleteEntry(${e.id})">X</button></td>
+          <td class="no-print">
+            <button class="edit-btn" onclick="openEditModal(${e.id})">✏️</button>
+            <button class="delete-btn" onclick="deleteEntry(${e.id})">✕</button>
+          </td>
         </tr>`;
       });
 
@@ -375,6 +464,73 @@
     const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const mon = new Date(d.setDate(diff));
     return mon.toISOString().split('T')[0];
+  }
+
+  function openEditModal(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+
+    editingId = id;
+    document.getElementById('editDate').value = entry.date || '';
+    document.getElementById('editJob').value = entry.job || '';
+    document.getElementById('editCode').value = entry.code || '';
+    document.getElementById('editTimeIn').value = entry.timeIn || '';
+    document.getElementById('editTimeOut').value = entry.timeOut || '';
+    document.getElementById('editHours').value = entry.hours || 0;
+    document.getElementById('editStartMiles').value = entry.startMiles || '';
+    document.getElementById('editEndMiles').value = entry.endMiles || '';
+    document.getElementById('editNotes').value = entry.notes || '';
+    document.getElementById('editDesc').value = entry.desc || '';
+
+    document.getElementById('editModal').classList.remove('hidden');
+  }
+
+  function closeEditModal() {
+    editingId = null;
+    document.getElementById('editModal').classList.add('hidden');
+  }
+
+  function calcEditHours() {
+    const tIn = document.getElementById('editTimeIn').value;
+    const tOut = document.getElementById('editTimeOut').value;
+    if (tIn && tOut) {
+      const start = new Date(`1970-01-01T${tIn}:00`);
+      const end = new Date(`1970-01-01T${tOut}:00`);
+      let diff = (end - start) / (1000 * 60 * 60);
+      if (diff < 0) diff += 24;
+      document.getElementById('editHours').value = diff.toFixed(2);
+    }
+  }
+
+  function saveEditEntry(e) {
+    e.preventDefault();
+    if (!editingId) return;
+
+    const sMiles = parseFloat(document.getElementById('editStartMiles').value) || 0;
+    const eMiles = parseFloat(document.getElementById('editEndMiles').value) || 0;
+
+    const idx = entries.findIndex(item => item.id === editingId);
+    if (idx !== -1) {
+      entries[idx] = {
+        ...entries[idx],
+        date: document.getElementById('editDate').value,
+        job: document.getElementById('editJob').value,
+        code: document.getElementById('editCode').value,
+        timeIn: document.getElementById('editTimeIn').value,
+        timeOut: document.getElementById('editTimeOut').value,
+        hours: parseFloat(document.getElementById('editHours').value) || 0,
+        startMiles: sMiles,
+        endMiles: eMiles,
+        totalMiles: (eMiles >= sMiles) ? (eMiles - sMiles) : 0,
+        notes: document.getElementById('editNotes').value,
+        desc: document.getElementById('editDesc').value
+      };
+
+      localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
+      renderSummaries();
+    }
+
+    closeEditModal();
   }
 
   function deleteEntry(id) {
