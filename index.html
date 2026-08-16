@@ -12,11 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#f97316">
 
-  <!-- SVG App Icon & Web App Manifest -->
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>">
-  <link rel="manifest" href="/manifest.json">
-
+ <!-- Inline SVG Icon (Guarantees zero 404 errors) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
+  
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
+  
+  <link rel="manifest" href="/manifest.json" />
   <style>
     :root {
       --primary: #ea580c;
