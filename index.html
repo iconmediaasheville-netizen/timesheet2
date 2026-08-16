@@ -91,7 +91,7 @@
 
     .quick-task-box { background: #fff7ed; border: 1px dashed var(--primary); padding: 12px; border-radius: 8px; margin-bottom: 16px; }
 
-    /* Compact Summary Table Styling */
+    /* Enhanced Report & Summary Styling */
     .week-card {
       background: #ffffff;
       border: 1px solid var(--border);
@@ -152,16 +152,22 @@
       text-transform: uppercase;
       font-size: 0.72rem;
       letter-spacing: 0.5px;
-      padding: 8px;
+      padding: 10px 8px;
       border: none;
       border-bottom: 1px solid var(--border);
       text-align: left;
     }
     .summary-table td {
-      padding: 8px;
+      padding: 10px 8px;
       border: none;
       border-bottom: 1px solid #ffedd5;
       vertical-align: middle;
+    }
+    .summary-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .summary-table tbody tr:hover {
+      background-color: #fffaf0;
     }
     
     .code-badge {
@@ -176,37 +182,8 @@
       border: 1px solid #e2e8f0;
     }
     
-    .details-btn {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      color: #c2410c;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.78rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .details-btn:hover { background: #ffedd5; }
-
-    .details-row { display: none; background-color: #fffbf7; }
-    .details-row.open { display: table-row; }
-    .details-content {
-      padding: 10px 12px;
-      font-size: 0.85rem;
-      color: #334155;
-      border-bottom: 1px solid var(--border);
-    }
-    .details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px;
-      margin-bottom: 6px;
-      font-size: 0.8rem;
-      color: #64748b;
-    }
-
     .action-btn {
-      padding: 4px 6px;
+      padding: 5px 8px;
       border-radius: 6px;
       border: none;
       cursor: pointer;
@@ -216,7 +193,7 @@
     }
     .action-btn.edit { background: #ffedd5; color: #c2410c; }
     .action-btn.edit:hover { background: #fed7aa; }
-    .action-btn.delete { background: #fee2e2; color: #dc2626; margin-left: 2px; }
+    .action-btn.delete { background: #fee2e2; color: #dc2626; margin-left: 4px; }
     .action-btn.delete:hover { background: #fca5a5; }
 
     /* Modal Styling */
@@ -246,12 +223,11 @@
     .cancel-btn { background: #cbd5e1; color: #1e293b; border: none; font-weight: bold; cursor: pointer; width: 100%; }
 
     @media print {
-      header, .no-print, .action-btn, .details-btn, .modal-overlay { display: none !important; }
+      header, .no-print, .action-btn, .modal-overlay { display: none !important; }
       body { background: white; padding: 0; }
       .card, .week-card { border: none; box-shadow: none; padding: 0; margin-top: 0; }
       .summary-table { border: 1px solid #ccc; }
       .summary-table th { background: #f1f5f9; color: #000; }
-      .details-row { display: table-row !important; }
     }
   </style>
 </head>
@@ -537,18 +513,6 @@
     autoFillMilesAndCode();
   }
 
-  function toggleDetails(id) {
-    const row = document.getElementById(`details-${id}`);
-    const btn = document.getElementById(`btn-details-${id}`);
-    if (row.classList.contains('open')) {
-      row.classList.remove('open');
-      btn.textContent = 'Details ▼';
-    } else {
-      row.classList.add('open');
-      btn.textContent = 'Hide ▲';
-    }
-  }
-
   function renderSummaries() {
     const container = document.getElementById('summaryContainer');
     container.innerHTML = '';
@@ -569,6 +533,7 @@
     Object.keys(weeks).reverse().forEach(wKey => {
       let wHours = 0, wMiles = 0;
       
+      // Calculate totals first
       weeks[wKey].forEach(e => {
         wHours += e.hours;
         wMiles += e.totalMiles;
@@ -592,15 +557,13 @@
                 <th>Job</th>
                 <th>Hours</th>
                 <th>Miles</th>
-                <th class="no-print">Info</th>
-                <th class="no-print" style="width: 70px; text-align: center;">Actions</th>
+                <th>Description</th>
+                <th class="no-print" style="width: 80px; text-align: center;">Actions</th>
               </tr>
             </thead>
             <tbody>`;
 
       weeks[wKey].forEach(e => {
-        const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut;
-        
         html += `<tr>
           <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
           <td>
@@ -609,23 +572,13 @@
           </td>
           <td style="font-weight: 600;">${e.hours}</td>
           <td>${e.totalMiles}</td>
-          <td class="no-print">
-            ${hasDetails ? `<button id="btn-details-${e.id}" class="details-btn" onclick="toggleDetails(${e.id})">Details ▼</button>` : '-'}
+          <td style="color: #334155;">
+            ${e.desc || '-'}
+            ${e.notes ? `<br><small style="color: #64748b;"><i>Notes: ${e.notes}</i></small>` : ''}
           </td>
           <td class="no-print" style="text-align: center;">
             <button class="action-btn edit" onclick="openEditModal(${e.id})" title="Edit Entry">✏️</button>
             <button class="action-btn delete" onclick="deleteEntry(${e.id})" title="Delete Entry">🗑️</button>
-          </td>
-        </tr>
-        
-        <tr id="details-${e.id}" class="details-row">
-          <td colspan="6" class="details-content">
-            <div class="details-grid">
-              <div>⏰ <strong>Times:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>
-              <div>🚚 <strong>Odometer:</strong> ${e.startMiles || 0} mi ➔ ${e.endMiles || 0} mi</div>
-            </div>
-            ${e.desc ? `<div><strong>Description:</strong> ${e.desc}</div>` : ''}
-            ${e.notes ? `<div style="margin-top: 2px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
           </td>
         </tr>`;
       });
