@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#f97316">
 
-  <!-- Inline SVG Icon (Guarantees zero 404 errors) -->
+  <!-- Inline SVG Icon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
   
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
@@ -44,7 +44,6 @@
       margin: 0 auto;
     }
 
-    /* Header & Settings Menu */
     .header-bar {
       display: flex;
       justify-content: space-between;
@@ -106,6 +105,13 @@
       color: #475569;
     }
 
+    .autofill-tag {
+      font-size: 0.75rem;
+      color: #ea580c;
+      font-weight: normal;
+      margin-left: 4px;
+    }
+
     input, textarea, select {
       width: 100%;
       padding: 8px 12px;
@@ -113,6 +119,12 @@
       border-radius: 6px;
       font-size: 0.95rem;
       background-color: #ffffff;
+    }
+
+    input[readonly] {
+      background-color: #f1f5f9;
+      color: #475569;
+      cursor: not-allowed;
     }
 
     textarea {
@@ -313,17 +325,26 @@
   <div class="container">
     <div class="header-bar">
       <h1>ShiftLog</h1>
-      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Rates Settings">☰</button>
+      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
     </div>
 
     <!-- Hidden Settings Menu Drawer -->
     <div id="settingsDrawer" class="settings-drawer no-print">
-      <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Rate Settings</h3>
+      <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Preferences & Rates</h3>
       <div class="row">
+        <div class="form-group">
+          <label>Start Week On</label>
+          <select id="startOfWeek" onchange="renderSummaries()">
+            <option value="1" selected>Monday</option>
+            <option value="0">Sunday</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Hourly Rate ($/hr)</label>
           <input type="number" id="hourlyRate" step="0.01" value="40" onchange="renderSummaries()" />
         </div>
+      </div>
+      <div class="row">
         <div class="form-group">
           <label>IRS Mileage Rate ($/mi)</label>
           <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
@@ -340,7 +361,7 @@
         <div class="row">
           <div class="form-group">
             <label>Date</label>
-            <input type="date" id="entryDate" required />
+            <input type="date" id="entryDate" onchange="autoFillPreviousMileage()" required />
           </div>
           <div class="form-group">
             <label>Job Name</label>
@@ -386,12 +407,18 @@
 
         <div class="row">
           <div class="form-group">
-            <label>Odometer/Start Miles</label>
-            <input type="number" id="entryStartMiles" placeholder="0" />
+            <label for="entryStartMiles">
+              Odometer / Start Miles <span id="autofillTag" class="autofill-tag"></span>
+            </label>
+            <input type="number" id="entryStartMiles" placeholder="0" oninput="calculateTotalMiles()" />
           </div>
           <div class="form-group">
-            <label>Odometer/End Miles</label>
-            <input type="number" id="entryEndMiles" placeholder="0" />
+            <label>Odometer / End Miles</label>
+            <input type="number" id="entryEndMiles" placeholder="0" oninput="calculateTotalMiles()" />
+          </div>
+          <div class="form-group">
+            <label>Total Miles Driven</label>
+            <input type="number" id="entryTotalMiles" placeholder="0" step="0.1" readonly />
           </div>
         </div>
 
@@ -424,13 +451,47 @@
   </div>
 
   <script>
-    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
-
     let entries = JSON.parse(localStorage.getItem('shiftlog_entries')) || [];
+
+    // Set initial date & trigger auto-fill
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
     function toggleMenu() {
       const drawer = document.getElementById('settingsDrawer');
       drawer.classList.toggle('open');
+    }
+
+    function autoFillPreviousMileage() {
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing || entries.length === 0) return;
+
+      const currentDateStr = document.getElementById('entryDate').value;
+      if (!currentDateStr) return;
+
+      const currentDate = new Date(currentDateStr);
+
+      // Find entries that occurred strictly before selected date
+      const priorEntries = entries.filter(e => {
+        const eDate = new Date(e.date);
+        return eDate <= currentDate && (e.endMiles || e.startMiles);
+      });
+
+      if (priorEntries.length > 0) {
+        // Sort to get the most recent preceding entry
+        priorEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+        const prevEntry = priorEntries[0];
+        const prevMiles = prevEntry.endMiles || prevEntry.startMiles;
+
+        if (prevMiles && prevMiles > 0) {
+          const startMilesInput = document.getElementById('entryStartMiles');
+          startMilesInput.value = prevMiles;
+          document.getElementById('autofillTag').innerText = '(⚡ Auto-filled)';
+          calculateTotalMiles();
+          return;
+        }
+      }
+
+      document.getElementById('autofillTag').innerText = '';
     }
 
     function calculateHoursFromTimes() {
@@ -451,6 +512,25 @@
       }
     }
 
+    function calculateTotalMiles() {
+      const start = parseFloat(document.getElementById('entryStartMiles').value);
+      const end = parseFloat(document.getElementById('entryEndMiles').value);
+      const totalField = document.getElementById('entryTotalMiles');
+
+      if (!isNaN(start) && !isNaN(end)) {
+        if (end >= start) {
+          totalField.value = (end - start).toFixed(1);
+          totalField.style.color = '#1e293b';
+        } else {
+          totalField.value = '0.0';
+          totalField.style.color = '#dc2626'; // Highlight error state
+        }
+      } else {
+        totalField.value = '';
+        totalField.style.color = '#1e293b';
+      }
+    }
+
     function saveEntry(e) {
       e.preventDefault();
       const editingId = document.getElementById('editingId').value;
@@ -458,18 +538,7 @@
       const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
       let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
 
-      // Automatically chain mileage for new entries
-      if (!editingId && startMiles > 0 && entries.length > 0) {
-        const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
-        const lastEntry = sortedEntries[sortedEntries.length - 1];
-
-        if (new Date(newDate) >= new Date(lastEntry.date)) {
-          lastEntry.endMiles = startMiles;
-          lastEntry.totalMiles = lastEntry.endMiles >= (lastEntry.startMiles || 0) 
-            ? lastEntry.endMiles - (lastEntry.startMiles || 0) 
-            : 0;
-        }
-      }
+      const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
 
       if (editingId) {
         // Update existing entry
@@ -486,7 +555,7 @@
             breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
             startMiles: startMiles,
             endMiles: endMiles,
-            totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
+            totalMiles: totalMiles,
             desc: document.getElementById('entryDesc').value,
             notes: document.getElementById('entryNotes').value
           };
@@ -504,7 +573,7 @@
           breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
           startMiles: startMiles,
           endMiles: endMiles,
-          totalMiles: endMiles >= startMiles ? endMiles - startMiles : 0,
+          totalMiles: totalMiles,
           desc: document.getElementById('entryDesc').value,
           notes: document.getElementById('entryNotes').value
         };
@@ -532,6 +601,9 @@
       document.getElementById('entryEndMiles').value = entry.endMiles || '';
       document.getElementById('entryDesc').value = entry.desc || '';
       document.getElementById('entryNotes').value = entry.notes || '';
+      document.getElementById('autofillTag').innerText = '';
+
+      calculateTotalMiles();
 
       document.getElementById('formHeader').innerText = 'Edit Shift Entry';
       document.getElementById('submitBtn').innerText = 'Update Entry';
@@ -545,17 +617,27 @@
       document.getElementById('editingId').value = '';
       document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('entryBreak').value = "0";
+      document.getElementById('entryTotalMiles').value = '';
+      document.getElementById('autofillTag').innerText = '';
       document.getElementById('formHeader').innerText = 'Log New Shift';
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
+
+      autoFillPreviousMileage();
     }
 
-    function getWeekKey(dateStr) {
+    function getWeekKey(dateStr, startOfWeek) {
       const d = new Date(dateStr + 'T00:00:00');
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      return monday.toISOString().split('T')[0];
+      const day = d.getDay(); // 0 = Sun, 1 = Mon, ...
+      const targetStartDay = parseInt(startOfWeek, 10); // 1 = Mon, 0 = Sun
+
+      let diff = d.getDate() - day + targetStartDay;
+      if (day < targetStartDay) {
+        diff -= 7;
+      }
+      
+      const weekStart = new Date(d.setDate(diff));
+      return weekStart.toISOString().split('T')[0];
     }
 
     function renderSummaries() {
@@ -563,6 +645,7 @@
       container.innerHTML = '';
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
       const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const startOfWeek = document.getElementById('startOfWeek').value;
 
       if (entries.length === 0) {
         container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
@@ -571,12 +654,12 @@
 
       const weeks = {};
       entries.forEach(e => {
-        const wKey = getWeekKey(e.date);
+        const wKey = getWeekKey(e.date, startOfWeek);
         if (!weeks[wKey]) weeks[wKey] = [];
         weeks[wKey].push(e);
       });
 
-      Object.keys(weeks).reverse().forEach(wKey => {
+      Object.keys(weeks).sort().reverse().forEach(wKey => {
         let wHours = 0, wMiles = 0;
         weeks[wKey].forEach(e => {
           wHours += parseFloat(e.hours || 0);
@@ -647,6 +730,7 @@
         entries = entries.filter(e => e.id != id);
         localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
         renderSummaries();
+        autoFillPreviousMileage();
       }
     }
 
@@ -655,13 +739,15 @@
         entries = [];
         localStorage.setItem('shiftlog_entries', JSON.stringify(entries));
         renderSummaries();
+        document.getElementById('entryStartMiles').value = '';
+        document.getElementById('autofillTag').innerText = '';
       }
     }
 
     function exportCSV() {
-      let csv = 'Date,Job,Code,Hours,Break (mins),Miles,Description,Notes\n';
+      let csv = 'Date,Job,Code,Hours,Break (mins),Start Miles,End Miles,Total Miles,Description,Notes\n';
       entries.forEach(e => {
-        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.breakMins || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
+        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.breakMins || 0},${e.startMiles || 0},${e.endMiles || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -671,6 +757,8 @@
       a.click();
     }
 
+    // Initialize auto-fill and summaries on boot
+    autoFillPreviousMileage();
     renderSummaries();
   </script>
 </body>
