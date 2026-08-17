@@ -353,6 +353,32 @@
       margin-bottom: 8px;
     }
 
+    .draft-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: #9a3412;
+    }
+
+    .draft-banner button {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #9a3412;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
     /* Calendar-style print view: hidden on screen, shown only when printing */
     .print-only {
       display: none;
@@ -478,6 +504,12 @@
     <!-- Entry Form -->
     <div class="card no-print">
       <h2 id="formHeader">Log New Shift</h2>
+
+      <div id="draftBanner" class="draft-banner no-print">
+        <span>📝 Picked up where you left off — unfinished entry restored</span>
+        <button type="button" onclick="discardDraft()">Discard</button>
+      </div>
+
       <form id="shiftForm" onsubmit="saveEntry(event)">
         <input type="hidden" id="editingId" value="" />
 
@@ -611,6 +643,7 @@
   <script>
     const STORAGE_KEY = 'shiftlog_entries';
     const JOBCODES_KEY = 'shiftlog_jobcodes';
+    const DRAFT_KEY = 'shiftlog_draft';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let wakeLock = null;
@@ -699,6 +732,111 @@
       }
     }
 
+    // Storage helpers for the in-progress entry draft (so an unfinished shift survives closing the app)
+    async function getStoredDraft() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(DRAFT_KEY);
+          return res ? JSON.parse(res.value || 'null') : null;
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+
+    async function setStoredDraft(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(DRAFT_KEY, serialized);
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(DRAFT_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    async function clearStoredDraft() {
+      localStorage.removeItem(DRAFT_KEY);
+      if (window.storage && typeof window.storage.delete === 'function') {
+        try {
+          await window.storage.delete(DRAFT_KEY);
+        } catch (e) {
+          console.warn('window.storage delete error (may just mean nothing was stored)', e);
+        }
+      }
+    }
+
+    function getFormDraftData() {
+      return {
+        date: document.getElementById('entryDate').value,
+        job: document.getElementById('entryJob').value,
+        code: document.getElementById('entryCode').value,
+        hours: document.getElementById('entryHours').value,
+        timeIn: document.getElementById('entryTimeIn').value,
+        timeOut: document.getElementById('entryTimeOut').value,
+        breakMins: document.getElementById('entryBreak').value,
+        startMiles: document.getElementById('entryStartMiles').value,
+        endMiles: document.getElementById('entryEndMiles').value,
+        desc: document.getElementById('entryDesc').value,
+        notes: document.getElementById('entryNotes').value
+      };
+    }
+
+    function isDraftEmpty(d) {
+      return !d.job && !d.hours && !d.timeIn && !d.timeOut && !d.startMiles && !d.endMiles && !d.desc && !d.notes && !d.code;
+    }
+
+    let draftSaveTimer = null;
+    function scheduleDraftSave() {
+      // Don't let autosave of a new draft clobber the stored draft while editing a different, existing entry
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing) return;
+
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(async () => {
+        const data = getFormDraftData();
+        if (isDraftEmpty(data)) {
+          await clearStoredDraft();
+        } else {
+          await setStoredDraft(data);
+        }
+      }, 400);
+    }
+
+    async function restoreDraftIfPresent() {
+      const draft = await getStoredDraft();
+      if (!draft || isDraftEmpty(draft)) return;
+
+      document.getElementById('entryDate').value = draft.date || new Date().toISOString().split('T')[0];
+      document.getElementById('entryJob').value = draft.job || '';
+      document.getElementById('entryCode').value = draft.code || '';
+      document.getElementById('entryHours').value = draft.hours || '';
+      document.getElementById('entryTimeIn').value = draft.timeIn || '';
+      document.getElementById('entryTimeOut').value = draft.timeOut || '';
+      document.getElementById('entryBreak').value = draft.breakMins || '0';
+      document.getElementById('entryStartMiles').value = draft.startMiles || '';
+      document.getElementById('entryEndMiles').value = draft.endMiles || '';
+      document.getElementById('entryDesc').value = draft.desc || '';
+      document.getElementById('entryNotes').value = draft.notes || '';
+
+      // Refresh code suggestions for this job without overwriting the code the draft already had
+      refreshCodeSuggestions(draft.job || '');
+      calculateTotalMiles();
+
+      const banner = document.getElementById('draftBanner');
+      if (banner) banner.style.display = 'flex';
+    }
+
+    async function discardDraft() {
+      await clearStoredDraft();
+      resetForm();
+      const banner = document.getElementById('draftBanner');
+      if (banner) banner.style.display = 'none';
+    }
+
     function normalizeJobKey(job) {
       return (job || '').trim().toLowerCase();
     }
@@ -760,18 +898,25 @@
       return jobEntries[0].code;
     }
 
-    // Refresh the door-code suggestions and auto-fill with the last code used for the typed job
-    function updateCodeDatalist() {
-      const job = document.getElementById('entryJob').value;
+    // Refresh just the datalist suggestions + placeholder for a job, without touching the code field's value
+    function refreshCodeSuggestions(job) {
       const codeInput = document.getElementById('entryCode');
       const datalist = document.getElementById('entryCodeList');
-      const autofillTagEl = document.getElementById('codeAutofillTag');
       const codes = getCodesForJob(job);
 
       datalist.innerHTML = codes.map(c => `<option value="${c}">`).join('');
       codeInput.placeholder = job.trim()
         ? (codes.length ? 'Select or type a code...' : 'No saved codes for this job yet')
         : 'Enter a job to see saved codes...';
+    }
+
+    // Refresh the door-code suggestions and auto-fill with the last code used for the typed job
+    function updateCodeDatalist() {
+      const job = document.getElementById('entryJob').value;
+      const codeInput = document.getElementById('entryCode');
+      const autofillTagEl = document.getElementById('codeAutofillTag');
+
+      refreshCodeSuggestions(job);
 
       // Don't clobber an existing entry's code while editing it
       const isEditing = document.getElementById('editingId').value !== '';
@@ -902,6 +1047,14 @@
       updateCodeDatalist();
       renderManageCodes();
       renderSummaries();
+      await restoreDraftIfPresent();
+
+      // Autosave the in-progress entry as a draft on any change to the form
+      const formEl = document.getElementById('shiftForm');
+      if (formEl) {
+        formEl.addEventListener('input', scheduleDraftSave);
+        formEl.addEventListener('change', scheduleDraftSave);
+      }
 
       // Restore Screen Wake Lock setting
       const savedWakeSetting = localStorage.getItem('shiftlog_wake_lock') === 'true';
@@ -1040,6 +1193,9 @@
       }
 
       await setStoredData(entries);
+      await clearStoredDraft();
+      const draftBannerEl = document.getElementById('draftBanner');
+      if (draftBannerEl) draftBannerEl.style.display = 'none';
       resetForm();
       renderSummaries();
       updateJobDatalist();
@@ -1063,6 +1219,8 @@
       document.getElementById('entryNotes').value = entry.notes || '';
       document.getElementById('autofillTag').innerText = '';
       document.getElementById('codeAutofillTag').innerText = '';
+      const draftBannerEl = document.getElementById('draftBanner');
+      if (draftBannerEl) draftBannerEl.style.display = 'none';
 
       updateCodeDatalist();
       calculateTotalMiles();
