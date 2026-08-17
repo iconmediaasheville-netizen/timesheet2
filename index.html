@@ -545,4 +545,1042 @@
       <div class="changelog-entry">
         <div class="changelog-version">v1.0</div>
         <ul>
-          <li>Initial
+          <li>Initial release: shift logging, mileage tracking, weekly summaries, and CSV export</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Hidden Settings Menu Drawer -->
+    <div id="settingsDrawer" class="settings-drawer no-print">
+      <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Preferences & Rates</h3>
+      <div class="row">
+        <div class="form-group">
+          <label>Start Week On</label>
+          <select id="startOfWeek" onchange="renderSummaries()">
+            <option value="1" selected>Monday</option>
+            <option value="0">Sunday</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hourly Rate ($/hr)</label>
+          <input type="number" id="hourlyRate" step="0.01" value="40" onchange="renderSummaries()" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>IRS Mileage Rate ($/mi)</label>
+          <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="keepScreenAwake" style="width: auto;" onchange="toggleWakeLock(this.checked)" />
+          Keep screen awake while app is open 💡
+        </label>
+      </div>
+
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Door Codes by Job</h3>
+      <div class="form-group">
+        <label>Job</label>
+        <input type="text" id="manageCodeJob" list="existingJobsList" placeholder="Type or select job..." oninput="renderManageCodes()" />
+      </div>
+      <div id="manageCodesList"></div>
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="manageCodeNew" placeholder="Add a code / quick ref..." onkeydown="if(event.key==='Enter'){event.preventDefault();addManageCode();}" />
+        </div>
+        <button type="button" class="btn-secondary" onclick="addManageCode()">Add</button>
+      </div>
+    </div>
+
+    <!-- Entry Form -->
+    <div class="card no-print">
+      <h2 id="formHeader">Log New Shift</h2>
+
+      <div id="draftBanner" class="draft-banner no-print">
+        <span>📝 Picked up where you left off — unfinished entry restored</span>
+        <button type="button" onclick="discardDraft()">Discard</button>
+      </div>
+
+      <form id="shiftForm" onsubmit="saveEntry(event)">
+        <input type="hidden" id="editingId" value="" />
+
+        <div class="row">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="entryDate" onchange="autoFillPreviousMileage()" required />
+          </div>
+          <div class="form-group">
+            <label>Job Name</label>
+            <input type="text" id="entryJob" list="existingJobsList" placeholder="e.g. name or address" required oninput="updateCodeDatalist()" />
+            <datalist id="existingJobsList"></datalist>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Door Codes / Quick Ref <span id="codeAutofillTag" class="autofill-tag"></span></label>
+            <input type="text" id="entryCode" list="entryCodeList" placeholder="Enter a job to see saved codes..." />
+            <datalist id="entryCodeList"></datalist>
+          </div>
+          <div class="form-group">
+            <label>Hours Worked</label>
+            <input type="number" step="0.01" id="entryHours" placeholder="0.0" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Time In</label>
+            <input type="time" id="entryTimeIn" oninput="calculateHoursFromTimes()" />
+          </div>
+          <div class="form-group">
+            <label>Time Out</label>
+            <input type="time" id="entryTimeOut" oninput="calculateHoursFromTimes()" />
+          </div>
+          <div class="form-group">
+            <label>Unpaid Break/Lunch</label>
+            <select id="entryBreak" onchange="calculateHoursFromTimes()">
+              <option value="0">None (0m)</option>
+              <option value="15">15 mins</option>
+              <option value="30">30 mins</option>
+              <option value="45">45 mins</option>
+              <option value="60">1 hr (60m)</option>
+              <option value="75">1 hr 15m</option>
+              <option value="90">1 hr 30m</option>
+              <option value="105">1 hr 45m</option>
+              <option value="120">2 hrs (120m)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label for="entryStartMiles">
+              Odometer / Start Miles <span id="autofillTag" class="autofill-tag"></span>
+            </label>
+            <input type="number" id="entryStartMiles" placeholder="0" oninput="calculateTotalMiles()" />
+          </div>
+          <div class="form-group">
+            <label>Odometer / End Miles</label>
+            <input type="number" id="entryEndMiles" placeholder="0" oninput="calculateTotalMiles()" />
+          </div>
+          <div class="form-group">
+            <label>Total Miles Driven</label>
+            <input type="number" id="entryTotalMiles" placeholder="0" step="0.1" readonly />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Work Description</label>
+          <textarea id="entryDesc" rows="3" placeholder="Description of work performed..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Materials & Notes</label>
+          <textarea id="entryNotes" rows="5" placeholder="Materials used, additional job notes..."></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
+        <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
+      </form>
+    </div>
+
+    <!-- Quick Task Log Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">⚡ Quick Task Add</h2>
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <label>Quick Task Description</label>
+          <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label>Time</label>
+          <select id="quickTaskMins">
+            <option value="0.25">15 mins (0.25h)</option>
+            <option value="0.5" selected>30 mins (0.50h)</option>
+            <option value="0.75">45 mins (0.75h)</option>
+            <option value="1.0">1 hr (1.00h)</option>
+            <option value="1.25">1 hr 15 mins (1.25h)</option>
+            <option value="1.5">1 hr 30 mins (1.50h)</option>
+            <option value="1.75">1 hr 45 mins (1.75h)</option>
+            <option value="2.0">2 hrs (2.00h)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>Assign to Job</label>
+          <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
+    </div>
+
+    <!-- Summary Section -->
+    <h2>Weekly Log Summaries</h2>
+
+    <div class="top-actions no-print">
+      <button class="btn-secondary" onclick="exportCSV()">Manual CSV Export</button>
+      <button class="btn-secondary" onclick="window.print()">Print / PDF</button>
+    </div>
+
+    <div id="summaryContainer"></div>
+
+    <div id="printCalendarContainer" class="print-only"></div>
+
+    <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'shiftlog_entries';
+    const JOBCODES_KEY = 'shiftlog_jobcodes';
+    const DRAFT_KEY = 'shiftlog_draft';
+    let entries = [];
+    let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
+    let wakeLock = null;
+
+    // Set initial date
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+    // Screen Wake Lock API handler
+    async function toggleWakeLock(enable) {
+      if ('wakeLock' in navigator) {
+        try {
+          if (enable && !wakeLock) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            localStorage.setItem('shiftlog_wake_lock', 'true');
+          } else if (!enable && wakeLock) {
+            await wakeLock.release();
+            wakeLock = null;
+            localStorage.setItem('shiftlog_wake_lock', 'false');
+          }
+        } catch (err) {
+          console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+        }
+      }
+    }
+
+    // Re-acquire wake lock on visibility/tab restore if setting was enabled
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    });
+
+    // Helper for non-blocking storage API (falls back to localStorage)
+    async function getStoredData() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(STORAGE_KEY);
+          return res ? JSON.parse(res.value || '[]') : [];
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+
+    async function setStoredData(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(STORAGE_KEY, serialized); // Always maintain local cache
+      
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(STORAGE_KEY, serialized);
+          updateSyncStatus('Synced to Cloud');
+        } catch (e) {
+          console.warn('window.storage set error', e);
+          updateSyncStatus('Saved locally');
+        }
+      } else {
+        updateSyncStatus('Saved locally');
+      }
+    }
+
+    // Storage helpers for the per-job door code registry
+    async function getStoredJobCodes() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(JOBCODES_KEY);
+          return res ? JSON.parse(res.value || '{}') : {};
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(JOBCODES_KEY) || '{}');
+    }
+
+    async function setStoredJobCodes(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(JOBCODES_KEY, serialized);
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(JOBCODES_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    // Storage helpers for the in-progress entry draft (so an unfinished shift survives closing the app)
+    async function getStoredDraft() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(DRAFT_KEY);
+          return res ? JSON.parse(res.value || 'null') : null;
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+
+    async function setStoredDraft(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(DRAFT_KEY, serialized);
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(DRAFT_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    async function clearStoredDraft() {
+      localStorage.removeItem(DRAFT_KEY);
+      if (window.storage && typeof window.storage.delete === 'function') {
+        try {
+          await window.storage.delete(DRAFT_KEY);
+        } catch (e) {
+          console.warn('window.storage delete error (may just mean nothing was stored)', e);
+        }
+      }
+    }
+
+    function getFormDraftData() {
+      return {
+        date: document.getElementById('entryDate').value,
+        job: document.getElementById('entryJob').value,
+        code: document.getElementById('entryCode').value,
+        hours: document.getElementById('entryHours').value,
+        timeIn: document.getElementById('entryTimeIn').value,
+        timeOut: document.getElementById('entryTimeOut').value,
+        breakMins: document.getElementById('entryBreak').value,
+        startMiles: document.getElementById('entryStartMiles').value,
+        endMiles: document.getElementById('entryEndMiles').value,
+        desc: document.getElementById('entryDesc').value,
+        notes: document.getElementById('entryNotes').value
+      };
+    }
+
+    function isDraftEmpty(d) {
+      return !d.job && !d.hours && !d.timeIn && !d.timeOut && !d.startMiles && !d.endMiles && !d.desc && !d.notes && !d.code;
+    }
+
+    let draftSaveTimer = null;
+    function scheduleDraftSave() {
+      // Don't let autosave of a new draft clobber the stored draft while editing a different, existing entry
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing) return;
+
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(async () => {
+        const data = getFormDraftData();
+        if (isDraftEmpty(data)) {
+          await clearStoredDraft();
+        } else {
+          await setStoredDraft(data);
+        }
+      }, 400);
+    }
+
+    async function restoreDraftIfPresent() {
+      const draft = await getStoredDraft();
+      if (!draft || isDraftEmpty(draft)) return;
+
+      document.getElementById('entryDate').value = draft.date || new Date().toISOString().split('T')[0];
+      document.getElementById('entryJob').value = draft.job || '';
+      document.getElementById('entryCode').value = draft.code || '';
+      document.getElementById('entryHours').value = draft.hours || '';
+      document.getElementById('entryTimeIn').value = draft.timeIn || '';
+      document.getElementById('entryTimeOut').value = draft.timeOut || '';
+      document.getElementById('entryBreak').value = draft.breakMins || '0';
+      document.getElementById('entryStartMiles').value = draft.startMiles || '';
+      document.getElementById('entryEndMiles').value = draft.endMiles || '';
+      document.getElementById('entryDesc').value = draft.desc || '';
+      document.getElementById('entryNotes').value = draft.notes || '';
+
+      // Refresh code suggestions for this job without overwriting the code the draft already had
+      refreshCodeSuggestions(draft.job || '');
+      calculateTotalMiles();
+
+      const banner = document.getElementById('draftBanner');
+      if (banner) banner.style.display = 'flex';
+    }
+
+    async function discardDraft() {
+      await clearStoredDraft();
+      resetForm();
+      const banner = document.getElementById('draftBanner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function normalizeJobKey(job) {
+      return (job || '').trim().toLowerCase();
+    }
+
+    function getCodesForJob(job) {
+      const key = normalizeJobKey(job);
+      if (!key || !jobCodes[key]) return [];
+      return jobCodes[key].codes || [];
+    }
+
+    async function addJobCode(job, code) {
+      const trimmedJob = (job || '').trim();
+      const trimmedCode = (code || '').trim();
+      if (!trimmedJob || !trimmedCode) return;
+
+      const key = normalizeJobKey(trimmedJob);
+      if (!jobCodes[key]) {
+        jobCodes[key] = { label: trimmedJob, codes: [] };
+      }
+      const alreadyExists = jobCodes[key].codes.some(c => c.toLowerCase() === trimmedCode.toLowerCase());
+      if (!alreadyExists) {
+        jobCodes[key].codes.push(trimmedCode);
+        await setStoredJobCodes(jobCodes);
+      }
+    }
+
+    async function removeJobCode(job, code) {
+      const key = normalizeJobKey(job);
+      if (!jobCodes[key]) return;
+      jobCodes[key].codes = jobCodes[key].codes.filter(c => c !== code);
+      await setStoredJobCodes(jobCodes);
+    }
+
+    function updateSyncStatus(text) {
+      const el = document.getElementById('syncStatus');
+      if (el) el.innerText = text;
+    }
+
+    // Populate job dropdown suggestions from previous entries + saved job codes
+    function updateJobDatalist() {
+      const datalist = document.getElementById('existingJobsList');
+      if (!datalist) return;
+
+      const jobsFromEntries = entries.map(e => e.job).filter(Boolean);
+      const jobsFromCodes = Object.values(jobCodes).map(v => v.label).filter(Boolean);
+      const uniqueJobs = [...new Set([...jobsFromEntries, ...jobsFromCodes])];
+      datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
+    }
+
+    // Find the code used on the most recent existing entry for this job
+    function getLastCodeForJob(job) {
+      const key = normalizeJobKey(job);
+      if (!key) return '';
+
+      const jobEntries = entries.filter(e => normalizeJobKey(e.job) === key && e.code && e.code.trim());
+      if (jobEntries.length === 0) return '';
+
+      jobEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      return jobEntries[0].code;
+    }
+
+    // Refresh just the datalist suggestions + placeholder for a job, without touching the code field's value
+    function refreshCodeSuggestions(job) {
+      const codeInput = document.getElementById('entryCode');
+      const datalist = document.getElementById('entryCodeList');
+      const codes = getCodesForJob(job);
+
+      datalist.innerHTML = codes.map(c => `<option value="${c}">`).join('');
+      codeInput.placeholder = job.trim()
+        ? (codes.length ? 'Select or type a code...' : 'No saved codes for this job yet')
+        : 'Enter a job to see saved codes...';
+    }
+
+    // Refresh the door-code suggestions and auto-fill with the last code used for the typed job
+    function updateCodeDatalist() {
+      const job = document.getElementById('entryJob').value;
+      const codeInput = document.getElementById('entryCode');
+      const autofillTagEl = document.getElementById('codeAutofillTag');
+
+      refreshCodeSuggestions(job);
+
+      // Don't clobber an existing entry's code while editing it
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing) return;
+
+      const lastCode = getLastCodeForJob(job);
+      if (lastCode) {
+        codeInput.value = lastCode;
+        if (autofillTagEl) autofillTagEl.innerText = '(⚡ Auto-filled)';
+      } else {
+        codeInput.value = '';
+        if (autofillTagEl) autofillTagEl.innerText = '';
+      }
+    }
+
+    // Render the code chips for the job selected in the Manage Door Codes panel
+    function renderManageCodes() {
+      const job = document.getElementById('manageCodeJob').value;
+      const listEl = document.getElementById('manageCodesList');
+      const codes = getCodesForJob(job);
+
+      if (!job.trim()) {
+        listEl.innerHTML = '<div class="manage-codes-empty">Type a job name above to view or edit its codes.</div>';
+        return;
+      }
+
+      if (codes.length === 0) {
+        listEl.innerHTML = '<div class="manage-codes-empty">No codes saved for this job yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = `<div class="code-chip-list">${codes.map(c => `
+        <span class="code-chip">${c}<button type="button" title="Remove" onclick="deleteManageCode('${c.replace(/'/g, "\\'")}')">✕</button></span>
+      `).join('')}</div>`;
+    }
+
+    async function addManageCode() {
+      const job = document.getElementById('manageCodeJob').value;
+      const newCode = document.getElementById('manageCodeNew').value;
+
+      if (!job.trim()) {
+        alert('Enter a job name first.');
+        return;
+      }
+      if (!newCode.trim()) {
+        alert('Enter a code to add.');
+        return;
+      }
+
+      await addJobCode(job, newCode);
+      document.getElementById('manageCodeNew').value = '';
+      renderManageCodes();
+      updateJobDatalist();
+      updateCodeDatalist();
+    }
+
+    async function deleteManageCode(code) {
+      const job = document.getElementById('manageCodeJob').value;
+      await removeJobCode(job, code);
+      renderManageCodes();
+      updateCodeDatalist();
+    }
+
+    // Quick Task handler function
+    async function logQuickTask() {
+      const taskDesc = document.getElementById('quickTaskDesc').value.trim();
+      const jobName = document.getElementById('quickTaskJob').value.trim();
+      const hoursToAdd = parseFloat(document.getElementById('quickTaskMins').value) || 0;
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      if (!taskDesc || !jobName) {
+        alert('Please provide both a task description and job name.');
+        return;
+      }
+
+      // Look for an existing entry for today with the exact same job name
+      let existingEntry = entries.find(e => e.date === todayStr && e.job.toLowerCase() === jobName.toLowerCase());
+
+      const mins = Math.round(hoursToAdd * 60);
+      const timeFormatted = mins >= 60 
+        ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
+        : `${mins}m`;
+
+      if (existingEntry) {
+        // Append task to description and update total hours
+        existingEntry.hours = parseFloat((existingEntry.hours + hoursToAdd).toFixed(2));
+        existingEntry.desc = existingEntry.desc 
+          ? `${existingEntry.desc}\n• [${timeFormatted}] ${taskDesc}` 
+          : `• [${timeFormatted}] ${taskDesc}`;
+      } else {
+        // Create new lightweight entry if none exists for today
+        const newEntry = {
+          id: Date.now(),
+          date: todayStr,
+          job: jobName,
+          code: '',
+          hours: hoursToAdd,
+          timeIn: '',
+          timeOut: '',
+          breakMins: 0,
+          startMiles: 0,
+          endMiles: 0,
+          totalMiles: 0,
+          desc: `• [${timeFormatted}] ${taskDesc}`,
+          notes: ''
+        };
+        entries.push(newEntry);
+      }
+
+      await setStoredData(entries);
+      
+      // Clear inputs
+      document.getElementById('quickTaskDesc').value = '';
+      document.getElementById('quickTaskJob').value = '';
+      
+      // Refresh views
+      renderSummaries();
+      updateJobDatalist();
+    }
+
+    async function initApp() {
+      updateSyncStatus('Syncing...');
+      entries = await getStoredData();
+      jobCodes = await getStoredJobCodes();
+      updateSyncStatus('Synced');
+      autoFillPreviousMileage();
+      updateJobDatalist();
+      updateCodeDatalist();
+      renderManageCodes();
+      renderSummaries();
+      await restoreDraftIfPresent();
+
+      // Autosave the in-progress entry as a draft on any change to the form
+      const formEl = document.getElementById('shiftForm');
+      if (formEl) {
+        formEl.addEventListener('input', scheduleDraftSave);
+        formEl.addEventListener('change', scheduleDraftSave);
+      }
+
+      // Restore Screen Wake Lock setting
+      const savedWakeSetting = localStorage.getItem('shiftlog_wake_lock') === 'true';
+      if (savedWakeSetting) {
+        const toggleEl = document.getElementById('keepScreenAwake');
+        if (toggleEl) toggleEl.checked = true;
+        toggleWakeLock(true);
+      }
+    }
+
+    function toggleMenu() {
+      const drawer = document.getElementById('settingsDrawer');
+      drawer.classList.toggle('open');
+    }
+
+    function toggleChangelog() {
+      const panel = document.getElementById('changelogPanel');
+      panel.classList.toggle('open');
+    }
+
+    function autoFillPreviousMileage() {
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing || entries.length === 0) return;
+
+      const currentDateStr = document.getElementById('entryDate').value;
+      if (!currentDateStr) return;
+
+      const currentDate = new Date(currentDateStr);
+
+      const priorEntries = entries.filter(e => {
+        const eDate = new Date(e.date);
+        return eDate <= currentDate && (e.endMiles || e.startMiles);
+      });
+
+      if (priorEntries.length > 0) {
+        priorEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+        const prevEntry = priorEntries[0];
+        const prevMiles = prevEntry.endMiles || prevEntry.startMiles;
+
+        if (prevMiles && prevMiles > 0) {
+          const startMilesInput = document.getElementById('entryStartMiles');
+          startMilesInput.value = prevMiles;
+          document.getElementById('autofillTag').innerText = '(⚡ Auto-filled)';
+          calculateTotalMiles();
+          return;
+        }
+      }
+
+      document.getElementById('autofillTag').innerText = '';
+    }
+
+    function calculateHoursFromTimes() {
+      const timeIn = document.getElementById('entryTimeIn').value;
+      const timeOut = document.getElementById('entryTimeOut').value;
+      const breakMins = parseFloat(document.getElementById('entryBreak').value) || 0;
+
+      if (timeIn && timeOut) {
+        const [h1, m1] = timeIn.split(':').map(Number);
+        const [h2, m2] = timeOut.split(':').map(Number);
+        let startMins = h1 * 60 + m1;
+        let endMins = h2 * 60 + m2;
+        if (endMins < startMins) endMins += 24 * 60;
+
+        const grossMins = endMins - startMins;
+        const netMins = Math.max(0, grossMins - breakMins);
+        document.getElementById('entryHours').value = (netMins / 60).toFixed(2);
+      }
+    }
+
+    function calculateTotalMiles() {
+      const start = parseFloat(document.getElementById('entryStartMiles').value);
+      const end = parseFloat(document.getElementById('entryEndMiles').value);
+      const totalField = document.getElementById('entryTotalMiles');
+
+      if (!isNaN(start) && !isNaN(end)) {
+        if (end >= start) {
+          totalField.value = (end - start).toFixed(1);
+          totalField.style.color = '#1e293b';
+        } else {
+          totalField.value = '0.0';
+          totalField.style.color = '#dc2626';
+        }
+      } else {
+        totalField.value = '';
+        totalField.style.color = '#1e293b';
+      }
+    }
+
+    async function saveEntry(e) {
+      e.preventDefault();
+      const editingId = document.getElementById('editingId').value;
+      const newDate = document.getElementById('entryDate').value;
+      const jobName = document.getElementById('entryJob').value;
+      const codeValue = document.getElementById('entryCode').value;
+      const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
+      let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
+
+      const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
+
+      if (editingId) {
+        const index = entries.findIndex(item => item.id == editingId);
+        if (index !== -1) {
+          entries[index] = {
+            ...entries[index],
+            date: newDate,
+            job: jobName,
+            code: codeValue,
+            hours: parseFloat(document.getElementById('entryHours').value) || 0,
+            timeIn: document.getElementById('entryTimeIn').value,
+            timeOut: document.getElementById('entryTimeOut').value,
+            breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
+            startMiles: startMiles,
+            endMiles: endMiles,
+            totalMiles: totalMiles,
+            desc: document.getElementById('entryDesc').value,
+            notes: document.getElementById('entryNotes').value
+          };
+        }
+      } else {
+        const newEntry = {
+          id: Date.now(),
+          date: newDate,
+          job: jobName,
+          code: codeValue,
+          hours: parseFloat(document.getElementById('entryHours').value) || 0,
+          timeIn: document.getElementById('entryTimeIn').value,
+          timeOut: document.getElementById('entryTimeOut').value,
+          breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
+          startMiles: startMiles,
+          endMiles: endMiles,
+          totalMiles: totalMiles,
+          desc: document.getElementById('entryDesc').value,
+          notes: document.getElementById('entryNotes').value
+        };
+        entries.push(newEntry);
+      }
+
+      // Remember this code against this job for next time
+      if (codeValue.trim()) {
+        await addJobCode(jobName, codeValue);
+      }
+
+      await setStoredData(entries);
+      await clearStoredDraft();
+      const draftBannerEl = document.getElementById('draftBanner');
+      if (draftBannerEl) draftBannerEl.style.display = 'none';
+      resetForm();
+      renderSummaries();
+      updateJobDatalist();
+    }
+
+    function editEntry(id) {
+      const entry = entries.find(e => e.id == id);
+      if (!entry) return;
+
+      document.getElementById('editingId').value = entry.id;
+      document.getElementById('entryDate').value = entry.date;
+      document.getElementById('entryJob').value = entry.job || '';
+      document.getElementById('entryCode').value = entry.code || '';
+      document.getElementById('entryHours').value = entry.hours || '';
+      document.getElementById('entryTimeIn').value = entry.timeIn || '';
+      document.getElementById('entryTimeOut').value = entry.timeOut || '';
+      document.getElementById('entryBreak').value = entry.breakMins || 0;
+      document.getElementById('entryStartMiles').value = entry.startMiles || '';
+      document.getElementById('entryEndMiles').value = entry.endMiles || '';
+      document.getElementById('entryDesc').value = entry.desc || '';
+      document.getElementById('entryNotes').value = entry.notes || '';
+      document.getElementById('autofillTag').innerText = '';
+      document.getElementById('codeAutofillTag').innerText = '';
+      const draftBannerEl = document.getElementById('draftBanner');
+      if (draftBannerEl) draftBannerEl.style.display = 'none';
+
+      updateCodeDatalist();
+      calculateTotalMiles();
+
+      document.getElementById('formHeader').innerText = 'Edit Shift Entry';
+      document.getElementById('submitBtn').innerText = 'Update Entry';
+      document.getElementById('cancelBtn').style.display = 'block';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      document.getElementById('shiftForm').reset();
+      document.getElementById('editingId').value = '';
+      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('entryBreak').value = "0";
+      document.getElementById('entryTotalMiles').value = '';
+      document.getElementById('autofillTag').innerText = '';
+      document.getElementById('formHeader').innerText = 'Log New Shift';
+      document.getElementById('submitBtn').innerText = 'Add Entry';
+      document.getElementById('cancelBtn').style.display = 'none';
+
+      updateCodeDatalist();
+      autoFillPreviousMileage();
+    }
+
+    function getWeekKey(dateStr, startOfWeek) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = d.getDay();
+      const targetStartDay = parseInt(startOfWeek, 10);
+
+      let diff = d.getDate() - day + targetStartDay;
+      if (day < targetStartDay) {
+        diff -= 7;
+      }
+      
+      const weekStart = new Date(d.setDate(diff));
+      return weekStart.toISOString().split('T')[0];
+    }
+
+    // Builds the calendar-style print layout: one grid per week, one cell per day,
+    // starting on whichever day is set in Preferences (Monday or Sunday)
+    function renderPrintCalendars() {
+      const container = document.getElementById('printCalendarContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const startOfWeek = document.getElementById('startOfWeek').value;
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
+        return;
+      }
+
+      const weeks = {};
+      entries.forEach(e => {
+        const wKey = getWeekKey(e.date, startOfWeek);
+        if (!weeks[wKey]) weeks[wKey] = [];
+        weeks[wKey].push(e);
+      });
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      Object.keys(weeks).sort().reverse().forEach(wKey => {
+        const weekEntries = weeks[wKey];
+        let wHours = 0, wMiles = 0;
+        weekEntries.forEach(e => {
+          wHours += parseFloat(e.hours || 0);
+          wMiles += parseFloat(e.totalMiles || 0);
+        });
+        const wPay = (wHours * rate).toFixed(2);
+        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+
+        // wKey is already the correct week-start date (matches the Start Week On setting),
+        // so just walk forward 7 days from it
+        const startDate = new Date(wKey + 'T00:00:00');
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          days.push(d);
+        }
+
+        let labelsHtml = '';
+        let cellsHtml = '';
+
+        days.forEach(d => {
+          const dateStr = d.toISOString().split('T')[0];
+          labelsHtml += `<div class="calendar-day-label">${dayNames[d.getDay()]}<br/>${d.getMonth() + 1}/${d.getDate()}</div>`;
+
+          const dayEntries = weekEntries.filter(e => e.date === dateStr);
+          let cellContent = '';
+          if (dayEntries.length === 0) {
+            cellContent = '<div class="calendar-day-empty">—</div>';
+          } else {
+            dayEntries.forEach(e => {
+              cellContent += `<div class="calendar-entry">
+                <strong>${e.job}</strong>${e.code ? ` <span style="color:#94a3b8;">(${e.code})</span>` : ''}<br/>
+                ${e.hours} hrs${e.totalMiles ? ` · ${e.totalMiles} mi` : ''}
+                ${e.timeIn || e.timeOut ? `<br/>${e.timeIn || '--'}–${e.timeOut || '--'}` : ''}
+              </div>`;
+            });
+          }
+          cellsHtml += `<div class="calendar-day-cell">${cellContent}</div>`;
+        });
+
+        container.innerHTML += `
+          <div class="calendar-week">
+            <div class="calendar-week-summary">📅 Week of ${wKey} — ${wHours.toFixed(2)} hrs · ${wMiles.toFixed(1)} mi ($${wMileageDeduction}) · $${wPay}</div>
+            <div class="calendar-grid">${labelsHtml}</div>
+            <div class="calendar-grid">${cellsHtml}</div>
+          </div>
+        `;
+      });
+    }
+
+    function renderSummaries() {
+      const container = document.getElementById('summaryContainer');
+      container.innerHTML = '';
+      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const startOfWeek = document.getElementById('startOfWeek').value;
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
+        renderPrintCalendars();
+        return;
+      }
+
+      const weeks = {};
+      entries.forEach(e => {
+        const wKey = getWeekKey(e.date, startOfWeek);
+        if (!weeks[wKey]) weeks[wKey] = [];
+        weeks[wKey].push(e);
+      });
+
+      Object.keys(weeks).sort().reverse().forEach(wKey => {
+        let wHours = 0, wMiles = 0;
+        weeks[wKey].forEach(e => {
+          wHours += parseFloat(e.hours || 0);
+          wMiles += parseFloat(e.totalMiles || 0);
+        });
+        const wPay = (wHours * rate).toFixed(2);
+        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+
+        let html = `
+          <div class="week-card">
+            <div class="week-header">
+              <h3 class="week-title">📅 Week of ${wKey}</h3>
+              <div class="week-stats-pills">
+                <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
+                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi ($${wMileageDeduction})</span>
+                <span class="stat-pill pay">💰 $${wPay}</span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="summary-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Job</th>
+                    <th>Hrs</th>
+                    <th class="no-print">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
+        weeks[wKey].forEach(e => {
+          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.breakMins || e.totalMiles || e.startMiles || e.endMiles;
+
+          html += `<tr>
+            <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
+            <td>
+              <strong>${e.job}</strong><br/>
+              ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
+              
+              ${hasDetails ? `
+                <details class="entry-details no-print">
+                  <summary>Details ▼</summary>
+                  <div class="details-box">
+                    ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
+                    ${e.breakMins ? `<div>☕ <strong>Unpaid Break:</strong> ${e.breakMins} mins</div>` : ''}
+                    ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
+                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
+                    ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
+                  </div>
+                </details>
+              ` : ''}
+            </td>
+            <td style="font-weight: 600;">${e.hours}</td>
+            <td class="no-print" style="white-space: nowrap;">
+              <button class="action-btn" onclick="editEntry(${e.id})">✏️</button>
+              <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
+            </td>
+          </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        container.innerHTML += html;
+      });
+
+      renderPrintCalendars();
+    }
+
+    async function deleteEntry(id) {
+      if (confirm('Delete this entry?')) {
+        entries = entries.filter(e => e.id != id);
+        await setStoredData(entries);
+        renderSummaries();
+        autoFillPreviousMileage();
+        updateJobDatalist();
+      }
+    }
+
+    async function clearAllEntries() {
+      if (confirm('Clear all entries? This action cannot be undone.')) {
+        entries = [];
+        await setStoredData(entries);
+        renderSummaries();
+        autoFillPreviousMileage();
+        updateJobDatalist();
+      }
+    }
+
+    function exportCSV() {
+      if (entries.length === 0) {
+        alert('No entries to export.');
+        return;
+      }
+
+      const headers = ['Date', 'Job Name', 'Quick Ref / Code', 'Hours Worked', 'Time In', 'Time Out', 'Break (mins)', 'Start Miles', 'End Miles', 'Total Miles', 'Work Description', 'Notes'];
+      
+      const rows = entries.map(e => [
+        `"${e.date || ''}"`,
+        `"${(e.job || '').replace(/"/g, '""')}"`,
+        `"${(e.code || '').replace(/"/g, '""')}"`,
+        e.hours || 0,
+        `"${e.timeIn || ''}"`,
+        `"${e.timeOut || ''}"`,
+        e.breakMins || 0,
+        e.startMiles || 0,
+        e.endMiles || 0,
+        e.totalMiles || 0,
+        `"${(e.desc || '').replace(/"/g, '""')}"`,
+        `"${(e.notes || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `shiftlog_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Initialize application on page load
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
