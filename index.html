@@ -17,7 +17,7 @@
   
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
   
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="manifest.json" />
   <style>
     :root {
       --primary: #ea580c;
@@ -320,6 +320,39 @@
       margin-top: 4px;
     }
 
+    .code-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .code-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+
+    .code-chip button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .manage-codes-empty {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
     @media print {
       .no-print {
         display: none !important;
@@ -366,6 +399,19 @@
           Keep screen awake while app is open 💡
         </label>
       </div>
+
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Door Codes by Job</h3>
+      <div class="form-group">
+        <label>Job</label>
+        <input type="text" id="manageCodeJob" list="existingJobsList" placeholder="Type or select job..." oninput="renderManageCodes()" />
+      </div>
+      <div id="manageCodesList"></div>
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="manageCodeNew" placeholder="Add a code / quick ref..." onkeydown="if(event.key==='Enter'){event.preventDefault();addManageCode();}" />
+        </div>
+        <button type="button" class="btn-secondary" onclick="addManageCode()">Add</button>
+      </div>
     </div>
 
     <!-- Entry Form -->
@@ -381,21 +427,16 @@
           </div>
           <div class="form-group">
             <label>Job Name</label>
-            <input type="text" id="entryJob" placeholder="e.g. name or address" required />
+            <input type="text" id="entryJob" list="existingJobsList" placeholder="e.g. name or address" required oninput="updateCodeDatalist()" />
+            <datalist id="existingJobsList"></datalist>
           </div>
         </div>
 
         <div class="row">
           <div class="form-group">
-            <label>Door Codes / Quick Ref</label>
-            <select id="entryCode">
-              <option value="">Select Quick Ref / Door Code...</option>
-              <option value="1642">1642</option>
-              <option value="Main Gate">Main Gate</option>
-              <option value="Side Door">Side Door</option>
-              <option value="Garage">Garage</option>
-              <option value="Keybox">Keybox</option>
-            </select>
+            <label>Door Codes / Quick Ref <span id="codeAutofillTag" class="autofill-tag"></span></label>
+            <input type="text" id="entryCode" list="entryCodeList" placeholder="Enter a job to see saved codes..." />
+            <datalist id="entryCodeList"></datalist>
           </div>
           <div class="form-group">
             <label>Hours Worked</label>
@@ -486,7 +527,6 @@
         <div class="form-group">
           <label>Assign to Job</label>
           <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
-          <datalist id="existingJobsList"></datalist>
         </div>
       </div>
       <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
@@ -507,7 +547,9 @@
 
   <script>
     const STORAGE_KEY = 'shiftlog_entries';
+    const JOBCODES_KEY = 'shiftlog_jobcodes';
     let entries = [];
+    let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let wakeLock = null;
 
     // Set initial date
@@ -568,18 +610,166 @@
       }
     }
 
+    // Storage helpers for the per-job door code registry
+    async function getStoredJobCodes() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(JOBCODES_KEY);
+          return res ? JSON.parse(res.value || '{}') : {};
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(JOBCODES_KEY) || '{}');
+    }
+
+    async function setStoredJobCodes(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(JOBCODES_KEY, serialized);
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(JOBCODES_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    function normalizeJobKey(job) {
+      return (job || '').trim().toLowerCase();
+    }
+
+    function getCodesForJob(job) {
+      const key = normalizeJobKey(job);
+      if (!key || !jobCodes[key]) return [];
+      return jobCodes[key].codes || [];
+    }
+
+    async function addJobCode(job, code) {
+      const trimmedJob = (job || '').trim();
+      const trimmedCode = (code || '').trim();
+      if (!trimmedJob || !trimmedCode) return;
+
+      const key = normalizeJobKey(trimmedJob);
+      if (!jobCodes[key]) {
+        jobCodes[key] = { label: trimmedJob, codes: [] };
+      }
+      const alreadyExists = jobCodes[key].codes.some(c => c.toLowerCase() === trimmedCode.toLowerCase());
+      if (!alreadyExists) {
+        jobCodes[key].codes.push(trimmedCode);
+        await setStoredJobCodes(jobCodes);
+      }
+    }
+
+    async function removeJobCode(job, code) {
+      const key = normalizeJobKey(job);
+      if (!jobCodes[key]) return;
+      jobCodes[key].codes = jobCodes[key].codes.filter(c => c !== code);
+      await setStoredJobCodes(jobCodes);
+    }
+
     function updateSyncStatus(text) {
       const el = document.getElementById('syncStatus');
       if (el) el.innerText = text;
     }
 
-    // Populate job dropdown suggestions from previous entries
+    // Populate job dropdown suggestions from previous entries + saved job codes
     function updateJobDatalist() {
       const datalist = document.getElementById('existingJobsList');
       if (!datalist) return;
-      
-      const uniqueJobs = [...new Set(entries.map(e => e.job).filter(Boolean))];
+
+      const jobsFromEntries = entries.map(e => e.job).filter(Boolean);
+      const jobsFromCodes = Object.values(jobCodes).map(v => v.label).filter(Boolean);
+      const uniqueJobs = [...new Set([...jobsFromEntries, ...jobsFromCodes])];
       datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
+    }
+
+    // Find the code used on the most recent existing entry for this job
+    function getLastCodeForJob(job) {
+      const key = normalizeJobKey(job);
+      if (!key) return '';
+
+      const jobEntries = entries.filter(e => normalizeJobKey(e.job) === key && e.code && e.code.trim());
+      if (jobEntries.length === 0) return '';
+
+      jobEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      return jobEntries[0].code;
+    }
+
+    // Refresh the door-code suggestions and auto-fill with the last code used for the typed job
+    function updateCodeDatalist() {
+      const job = document.getElementById('entryJob').value;
+      const codeInput = document.getElementById('entryCode');
+      const datalist = document.getElementById('entryCodeList');
+      const autofillTagEl = document.getElementById('codeAutofillTag');
+      const codes = getCodesForJob(job);
+
+      datalist.innerHTML = codes.map(c => `<option value="${c}">`).join('');
+      codeInput.placeholder = job.trim()
+        ? (codes.length ? 'Select or type a code...' : 'No saved codes for this job yet')
+        : 'Enter a job to see saved codes...';
+
+      // Don't clobber an existing entry's code while editing it
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing) return;
+
+      const lastCode = getLastCodeForJob(job);
+      if (lastCode) {
+        codeInput.value = lastCode;
+        if (autofillTagEl) autofillTagEl.innerText = '(⚡ Auto-filled)';
+      } else {
+        codeInput.value = '';
+        if (autofillTagEl) autofillTagEl.innerText = '';
+      }
+    }
+
+    // Render the code chips for the job selected in the Manage Door Codes panel
+    function renderManageCodes() {
+      const job = document.getElementById('manageCodeJob').value;
+      const listEl = document.getElementById('manageCodesList');
+      const codes = getCodesForJob(job);
+
+      if (!job.trim()) {
+        listEl.innerHTML = '<div class="manage-codes-empty">Type a job name above to view or edit its codes.</div>';
+        return;
+      }
+
+      if (codes.length === 0) {
+        listEl.innerHTML = '<div class="manage-codes-empty">No codes saved for this job yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = `<div class="code-chip-list">${codes.map(c => `
+        <span class="code-chip">${c}<button type="button" title="Remove" onclick="deleteManageCode('${c.replace(/'/g, "\\'")}')">✕</button></span>
+      `).join('')}</div>`;
+    }
+
+    async function addManageCode() {
+      const job = document.getElementById('manageCodeJob').value;
+      const newCode = document.getElementById('manageCodeNew').value;
+
+      if (!job.trim()) {
+        alert('Enter a job name first.');
+        return;
+      }
+      if (!newCode.trim()) {
+        alert('Enter a code to add.');
+        return;
+      }
+
+      await addJobCode(job, newCode);
+      document.getElementById('manageCodeNew').value = '';
+      renderManageCodes();
+      updateJobDatalist();
+      updateCodeDatalist();
+    }
+
+    async function deleteManageCode(code) {
+      const job = document.getElementById('manageCodeJob').value;
+      await removeJobCode(job, code);
+      renderManageCodes();
+      updateCodeDatalist();
     }
 
     // Quick Task handler function
@@ -642,9 +832,12 @@
     async function initApp() {
       updateSyncStatus('Syncing...');
       entries = await getStoredData();
+      jobCodes = await getStoredJobCodes();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
       updateJobDatalist();
+      updateCodeDatalist();
+      renderManageCodes();
       renderSummaries();
 
       // Restore Screen Wake Lock setting
@@ -733,6 +926,8 @@
       e.preventDefault();
       const editingId = document.getElementById('editingId').value;
       const newDate = document.getElementById('entryDate').value;
+      const jobName = document.getElementById('entryJob').value;
+      const codeValue = document.getElementById('entryCode').value;
       const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
       let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
 
@@ -744,8 +939,8 @@
           entries[index] = {
             ...entries[index],
             date: newDate,
-            job: document.getElementById('entryJob').value,
-            code: document.getElementById('entryCode').value,
+            job: jobName,
+            code: codeValue,
             hours: parseFloat(document.getElementById('entryHours').value) || 0,
             timeIn: document.getElementById('entryTimeIn').value,
             timeOut: document.getElementById('entryTimeOut').value,
@@ -761,8 +956,8 @@
         const newEntry = {
           id: Date.now(),
           date: newDate,
-          job: document.getElementById('entryJob').value,
-          code: document.getElementById('entryCode').value,
+          job: jobName,
+          code: codeValue,
           hours: parseFloat(document.getElementById('entryHours').value) || 0,
           timeIn: document.getElementById('entryTimeIn').value,
           timeOut: document.getElementById('entryTimeOut').value,
@@ -774,6 +969,11 @@
           notes: document.getElementById('entryNotes').value
         };
         entries.push(newEntry);
+      }
+
+      // Remember this code against this job for next time
+      if (codeValue.trim()) {
+        await addJobCode(jobName, codeValue);
       }
 
       await setStoredData(entries);
@@ -799,7 +999,9 @@
       document.getElementById('entryDesc').value = entry.desc || '';
       document.getElementById('entryNotes').value = entry.notes || '';
       document.getElementById('autofillTag').innerText = '';
+      document.getElementById('codeAutofillTag').innerText = '';
 
+      updateCodeDatalist();
       calculateTotalMiles();
 
       document.getElementById('formHeader').innerText = 'Edit Shift Entry';
@@ -820,6 +1022,7 @@
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
 
+      updateCodeDatalist();
       autoFillPreviousMileage();
     }
 
