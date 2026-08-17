@@ -353,6 +353,67 @@
       margin-bottom: 8px;
     }
 
+    /* Calendar-style print view: hidden on screen, shown only when printing */
+    .print-only {
+      display: none;
+    }
+
+    .calendar-week {
+      page-break-inside: avoid;
+      margin-bottom: 22px;
+    }
+
+    .calendar-week-summary {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #9a3412;
+      margin-bottom: 6px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+
+    .calendar-day-label {
+      font-weight: 700;
+      text-align: center;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      color: #9a3412;
+      padding: 3px 2px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .calendar-day-cell {
+      border: 1px solid var(--border);
+      min-height: 85px;
+      padding: 4px;
+      font-size: 0.65rem;
+      line-height: 1.3;
+    }
+
+    .calendar-entry {
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px dashed #ffedd5;
+    }
+
+    .calendar-entry:last-child {
+      border-bottom: none;
+    }
+
+    .calendar-day-empty {
+      color: #cbd5e1;
+    }
+
+    @media print {
+      #summaryContainer {
+        display: none !important;
+      }
+    }
+
     @media print {
       .no-print {
         display: none !important;
@@ -541,6 +602,8 @@
     </div>
 
     <div id="summaryContainer"></div>
+
+    <div id="printCalendarContainer" class="print-only"></div>
 
     <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
   </div>
@@ -1040,6 +1103,84 @@
       return weekStart.toISOString().split('T')[0];
     }
 
+    // Builds the calendar-style print layout: one grid per week, one cell per day,
+    // starting on whichever day is set in Preferences (Monday or Sunday)
+    function renderPrintCalendars() {
+      const container = document.getElementById('printCalendarContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const startOfWeek = document.getElementById('startOfWeek').value;
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
+        return;
+      }
+
+      const weeks = {};
+      entries.forEach(e => {
+        const wKey = getWeekKey(e.date, startOfWeek);
+        if (!weeks[wKey]) weeks[wKey] = [];
+        weeks[wKey].push(e);
+      });
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      Object.keys(weeks).sort().reverse().forEach(wKey => {
+        const weekEntries = weeks[wKey];
+        let wHours = 0, wMiles = 0;
+        weekEntries.forEach(e => {
+          wHours += parseFloat(e.hours || 0);
+          wMiles += parseFloat(e.totalMiles || 0);
+        });
+        const wPay = (wHours * rate).toFixed(2);
+        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+
+        // wKey is already the correct week-start date (matches the Start Week On setting),
+        // so just walk forward 7 days from it
+        const startDate = new Date(wKey + 'T00:00:00');
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          days.push(d);
+        }
+
+        let labelsHtml = '';
+        let cellsHtml = '';
+
+        days.forEach(d => {
+          const dateStr = d.toISOString().split('T')[0];
+          labelsHtml += `<div class="calendar-day-label">${dayNames[d.getDay()]}<br/>${d.getMonth() + 1}/${d.getDate()}</div>`;
+
+          const dayEntries = weekEntries.filter(e => e.date === dateStr);
+          let cellContent = '';
+          if (dayEntries.length === 0) {
+            cellContent = '<div class="calendar-day-empty">—</div>';
+          } else {
+            dayEntries.forEach(e => {
+              cellContent += `<div class="calendar-entry">
+                <strong>${e.job}</strong>${e.code ? ` <span style="color:#94a3b8;">(${e.code})</span>` : ''}<br/>
+                ${e.hours} hrs${e.totalMiles ? ` · ${e.totalMiles} mi` : ''}
+                ${e.timeIn || e.timeOut ? `<br/>${e.timeIn || '--'}–${e.timeOut || '--'}` : ''}
+              </div>`;
+            });
+          }
+          cellsHtml += `<div class="calendar-day-cell">${cellContent}</div>`;
+        });
+
+        container.innerHTML += `
+          <div class="calendar-week">
+            <div class="calendar-week-summary">📅 Week of ${wKey} — ${wHours.toFixed(2)} hrs · ${wMiles.toFixed(1)} mi ($${wMileageDeduction}) · $${wPay}</div>
+            <div class="calendar-grid">${labelsHtml}</div>
+            <div class="calendar-grid">${cellsHtml}</div>
+          </div>
+        `;
+      });
+    }
+
     function renderSummaries() {
       const container = document.getElementById('summaryContainer');
       container.innerHTML = '';
@@ -1049,6 +1190,7 @@
 
       if (entries.length === 0) {
         container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
+        renderPrintCalendars();
         return;
       }
 
@@ -1123,6 +1265,8 @@
         html += `</tbody></table></div></div>`;
         container.innerHTML += html;
       });
+
+      renderPrintCalendars();
     }
 
     async function deleteEntry(id) {
