@@ -1,10 +1,9 @@
-const CACHE_NAME = 'shiftlog-v1';
+const CACHE_NAME = 'shiftlog-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
-
 // Install: Cache essential files
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -12,7 +11,6 @@ self.addEventListener('install', (e) => {
   );
   self.skipWaiting();
 });
-
 // Activate: Take control immediately & clean old caches
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -26,10 +24,9 @@ self.addEventListener('activate', (e) => {
   );
   return self.clients.claim();
 });
-
 // Fetch: Try network first, fall back to cache if offline
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request) || caches.match('/index.html'))
+    fetch(e.request).catch(() => caches.match(e.request) || caches.match('./index.html'))
   );
 });
