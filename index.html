@@ -3,921 +3,343 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ShiftLog - Time & Mileage Tracker</title>
-
-  <!-- PWA & Mobile Home Screen Web App Tags -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="ShiftLog">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#f97316">
-
-  <!-- Inline SVG Icon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
-  
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='og6b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23f97316'/><stop offset='100%25' stop-color='%23c2410c'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23og6b)'/><path d='M256 95 C170 95 105 160 105 245 C105 345 256 425 256 425 C256 425 407 345 407 245 C407 160 342 95 256 95 Z' fill='%23ffffff'/><circle cx='256' cy='230' r='90' fill='%23ea580c'/><text x='256' y='262' font-size='95' font-family='sans-serif' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-2'>SL</text></svg>" />
-  
-  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f97316" />
+  <title>ShiftLog</title>
   <style>
     :root {
-      --primary: #ea580c;
-      --primary-light: #fff7ed;
-      --border: #fed7aa;
-      --text: #1e293b;
-      --bg: #fafafa;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     }
 
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 40px; }
+    
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+    .btn-icon { background: none; border: none; font-size: 1.25rem; cursor: pointer; padding: 0.25rem; border-radius: 6px; }
 
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 16px;
-    }
+    main { max-width: 600px; margin: 1.5rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.25rem; }
 
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
 
-    .header-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
+    .form-group { margin-bottom: 0.85rem; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    
+    input, select, textarea { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); background: #fff; }
 
-    .header-bar h1 {
-      margin: 0;
-    }
+    .btn { width: 100%; background: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
 
-    .hamburger-btn {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 12px;
-      font-size: 1.25rem;
-      cursor: pointer;
-      color: var(--primary);
-    }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; margin-bottom: 1rem; }
+    .stat-box { background: var(--bg); padding: 0.75rem 0.5rem; border-radius: 8px; border: 1px solid var(--border); }
+    .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .stat-lbl { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 
-    .settings-drawer {
-      display: none;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
+    .log-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .log-item:last-child { border-bottom: none; }
+    .log-info { display: flex; flex-direction: column; gap: 0.1rem; }
+    .log-date { font-weight: 600; }
+    .log-sub { color: var(--text-muted); font-size: 0.75rem; }
 
-    .settings-drawer.open {
-      display: block;
-    }
-
-    h1, h2 {
-      color: #9a3412;
-      margin-top: 0;
-    }
-
-    .card {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    label {
-      display: block;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: #475569;
-    }
-
-    .autofill-tag {
-      font-size: 0.75rem;
-      color: #ea580c;
-      font-weight: normal;
-      margin-left: 4px;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      background-color: #ffffff;
-    }
-
-    input[readonly] {
-      background-color: #f1f5f9;
-      color: #475569;
-      cursor: not-allowed;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .row > div {
-      flex: 1;
-    }
-
-    .btn-submit {
-      width: 100%;
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-
-    .btn-submit:hover {
-      background: #c2410c;
-    }
-
-    .btn-cancel {
-      width: 100%;
-      background: #cbd5e1;
-      color: #334155;
-      border: none;
-      padding: 8px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      margin-top: 6px;
-      display: none;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .btn-secondary {
-      padding: 8px 16px;
-      border: 1px solid #cbd5e1;
-      background: #f1f5f9;
-      border-radius: 6px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .week-card {
-      border: 1px solid var(--border);
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 20px;
-    }
-
-    .week-title {
-      margin: 0 0 8px 0;
-      font-size: 1.1rem;
-      color: #9a3412;
-    }
-
-    .week-stats-pills {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-
-    .stat-pill {
-      background: var(--primary-light);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-
-    .stat-pill.pay {
-      background: var(--primary);
-      color: #ffffff;
-      border: none;
-    }
-
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-
-    .summary-table th, 
-    .summary-table td {
-      padding: 10px 8px;
-      text-align: left;
-      border-bottom: 1px solid #ffedd5;
-      vertical-align: top;
-    }
-
-    .summary-table th {
-      background: var(--primary-light);
-      color: #9a3412;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-    }
-
-    .code-badge {
-      display: inline-block;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      color: #475569;
-    }
-
-    details.entry-details {
-      margin-top: 6px;
-    }
-
-    details.entry-details summary {
-      cursor: pointer;
-      color: var(--primary);
-      font-weight: 700;
-      font-size: 0.78rem;
-      list-style: none;
-      display: inline-block;
-      background: var(--primary-light);
-      border: 1px solid var(--border);
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
-
-    details.entry-details summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .details-box {
-      background: #fffbf7;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 6px;
-      margin-top: 6px;
-      font-size: 0.82rem;
-      color: #334155;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    .action-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 2px 4px;
-    }
-
-    .btn-clear {
-      width: 100%;
-      padding: 12px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      color: #475569;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .sync-status {
-      font-size: 0.75rem;
-      color: #64748b;
-      text-align: right;
-      margin-top: 4px;
-    }
+    /* Drawer Modal */
+    .drawer { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; justify-content: flex-end; z-index: 100; }
+    .drawer.active { display: flex; }
+    .drawer-content { width: 100%; max-width: 320px; background: var(--surface); height: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
 
     @media print {
-      .no-print {
-        display: none !important;
-      }
+      header, .card:not(#summary-card), .btn { display: none !important; }
+      body { background: white; }
+      .card { border: none; box-shadow: none; }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="header-bar">
-      <div>
-        <h1>ShiftLog</h1>
-        <div id="syncStatus" class="sync-status">Syncing...</div>
-      </div>
-      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
-    </div>
+  <header>
+    <h1>ShiftLog</h1>
+    <button class="btn-icon" onclick="toggleDrawer(true)" title="Settings">⚙️</button>
+  </header>
 
-    <!-- Hidden Settings Menu Drawer -->
-    <div id="settingsDrawer" class="settings-drawer no-print">
-      <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Preferences & Rates</h3>
-      <div class="row">
+  <main>
+    <!-- Log Shift Card -->
+    <section class="card">
+      <h2>Log Work Shift</h2>
+      <form id="shiftForm">
         <div class="form-group">
-          <label>Start Week On</label>
-          <select id="startOfWeek" onchange="renderSummaries()">
-            <option value="1" selected>Monday</option>
-            <option value="0">Sunday</option>
-          </select>
+          <label for="shiftDate">Date</label>
+          <input type="date" id="shiftDate" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="startTime">Start Time</label>
+            <input type="time" id="startTime" required />
+          </div>
+          <div class="form-group">
+            <label for="endTime">End Time</label>
+            <input type="time" id="endTime" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="startOdo">Start Odometer</label>
+            <input type="number" id="startOdo" step="0.1" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label for="endOdo">End Odometer</label>
+            <input type="number" id="endOdo" step="0.1" placeholder="0" />
+          </div>
         </div>
         <div class="form-group">
-          <label>Hourly Rate ($/hr)</label>
-          <input type="number" id="hourlyRate" step="0.01" value="40" onchange="renderSummaries()" />
+          <label for="shiftNotes">Notes / Location</label>
+          <input type="text" id="shiftNotes" placeholder="Client site, bed assembly, cabinet work..." />
         </div>
-      </div>
-      <div class="row">
-        <div class="form-group">
-          <label>IRS Mileage Rate ($/mi)</label>
-          <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Entry Form -->
-    <div class="card no-print">
-      <h2 id="formHeader">Log New Shift</h2>
-      <form id="shiftForm" onsubmit="saveEntry(event)">
-        <input type="hidden" id="editingId" value="" />
-
-        <div class="row">
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="entryDate" onchange="autoFillPreviousMileage()" required />
-          </div>
-          <div class="form-group">
-            <label>Job Name</label>
-            <input type="text" id="entryJob" placeholder="e.g. name or address" required />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="form-group">
-            <label>Door Codes / Quick Ref</label>
-            <select id="entryCode">
-              <option value="">Select Quick Ref / Door Code...</option>
-              <option value="1642">1642</option>
-              <option value="Main Gate">Main Gate</option>
-              <option value="Side Door">Side Door</option>
-              <option value="Garage">Garage</option>
-              <option value="Keybox">Keybox</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Hours Worked</label>
-            <input type="number" step="0.01" id="entryHours" placeholder="0.0" required />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="form-group">
-            <label>Time In</label>
-            <input type="time" id="entryTimeIn" oninput="calculateHoursFromTimes()" />
-          </div>
-          <div class="form-group">
-            <label>Time Out</label>
-            <input type="time" id="entryTimeOut" oninput="calculateHoursFromTimes()" />
-          </div>
-          <div class="form-group">
-            <label>Unpaid Break/Lunch</label>
-            <select id="entryBreak" onchange="calculateHoursFromTimes()">
-              <option value="0">None (0m)</option>
-              <option value="15">15 mins</option>
-              <option value="30">30 mins</option>
-              <option value="45">45 mins</option>
-              <option value="60">1 hr (60m)</option>
-              <option value="75">1 hr 15m</option>
-              <option value="90">1 hr 30m</option>
-              <option value="105">1 hr 45m</option>
-              <option value="120">2 hrs (120m)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="form-group">
-            <label for="entryStartMiles">
-              Odometer / Start Miles <span id="autofillTag" class="autofill-tag"></span>
-            </label>
-            <input type="number" id="entryStartMiles" placeholder="0" oninput="calculateTotalMiles()" />
-          </div>
-          <div class="form-group">
-            <label>Odometer / End Miles</label>
-            <input type="number" id="entryEndMiles" placeholder="0" oninput="calculateTotalMiles()" />
-          </div>
-          <div class="form-group">
-            <label>Total Miles Driven</label>
-            <input type="number" id="entryTotalMiles" placeholder="0" step="0.1" readonly />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Work Description</label>
-          <textarea id="entryDesc" rows="3" placeholder="Description of work performed..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Materials & Notes</label>
-          <textarea id="entryNotes" rows="5" placeholder="Materials used, additional job notes..."></textarea>
-        </div>
-
-        <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
-        <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
+        <button type="submit" class="btn">Save Shift</button>
       </form>
-    </div>
+    </section>
 
-    <!-- Quick Task Log Card -->
-    <div class="card no-print" style="border-left: 4px solid var(--primary);">
-      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">⚡ Quick Task Add</h2>
-      <div class="row">
-        <div class="form-group" style="flex: 2;">
-          <label>Quick Task Description</label>
-          <input type="text" id="quickTaskDesc" placeholder="e.g. Unloaded materials, Hardware run" />
+    <!-- Quick Task Logger -->
+    <section class="card">
+      <h2>Quick Task Logger</h2>
+      <form id="taskForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskType">Task Type</label>
+            <select id="taskType">
+              <option value="Cabinetry">Cabinetry</option>
+              <option value="Furniture Assembly">Furniture Assembly</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Travel / Delivery">Travel / Delivery</option>
+              <option value="General Admin">General Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="taskDuration">Hours Spent</label>
+            <input type="number" id="taskDuration" step="0.25" placeholder="1.5" required />
+          </div>
         </div>
-        <div class="form-group" style="flex: 1;">
-          <label>Time</label>
-          <select id="quickTaskMins">
-            <option value="0.25">15 mins (0.25h)</option>
-            <option value="0.5" selected>30 mins (0.50h)</option>
-            <option value="0.75">45 mins (0.75h)</option>
-            <option value="1.0">1 hr (1.00h)</option>
-            <option value="1.25">1 hr 15 mins (1.25h)</option>
-            <option value="1.5">1 hr 30 mins (1.50h)</option>
-            <option value="1.75">1 hr 45 mins (1.75h)</option>
-            <option value="2.0">2 hrs (2.00h)</option>
-          </select>
+        <button type="submit" class="btn btn-secondary">Add Quick Task</button>
+      </form>
+    </section>
+
+    <!-- Weekly Summary Card -->
+    <section class="card" id="summary-card">
+      <h2>Weekly Summary & Earnings</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="totalHours">0.0</div>
+          <div class="stat-lbl">Hours</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="totalMiles">0.0</div>
+          <div class="stat-lbl">Miles</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="totalEarnings">$0.00</div>
+          <div class="stat-lbl">Gross Est.</div>
         </div>
       </div>
-      <div class="row">
-        <div class="form-group">
-          <label>Assign to Job</label>
-          <input type="text" id="quickTaskJob" list="existingJobsList" placeholder="Select or type job..." required />
-          <datalist id="existingJobsList"></datalist>
-        </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-outline" onclick="window.print()">Print Log</button>
       </div>
-      <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
+    </section>
+
+    <!-- Recent Logs -->
+    <section class="card">
+      <h2>Recent Shifts</h2>
+      <div id="logList"></div>
+    </section>
+  </main>
+
+  <!-- Settings Drawer -->
+  <div class="drawer" id="settingsDrawer">
+    <div class="drawer-content">
+      <h2>Settings</h2>
+      <div class="form-group">
+        <label for="hourlyRate">Hourly Rate ($)</label>
+        <input type="number" id="hourlyRate" step="0.5" value="35.00" />
+      </div>
+      <div class="form-group">
+        <label for="mileageRate">IRS Mileage Rate ($/mi)</label>
+        <input type="number" id="mileageRate" step="0.005" value="0.67" />
+      </div>
+      <button class="btn" onclick="saveSettings()">Save Settings</button>
+      <button class="btn btn-secondary" onclick="toggleDrawer(false)">Close</button>
     </div>
-
-    <!-- Summary Section -->
-    <h2>Weekly Log Summaries</h2>
-
-    <div class="top-actions no-print">
-      <button class="btn-secondary" onclick="exportCSV()">Manual CSV Export</button>
-      <button class="btn-secondary" onclick="window.print()">Print / PDF</button>
-    </div>
-
-    <div id="summaryContainer"></div>
-
-    <button class="btn-clear no-print" onclick="clearAllEntries()">Clear All Saved Entries</button>
   </div>
 
   <script>
-    const STORAGE_KEY = 'shiftlog_entries';
-    let entries = [];
+    const STORAGE_KEY = 'shiftlog_records';
+    const SETTINGS_KEY = 'shiftlog_settings';
 
-    // Set initial date
-    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('shiftDate').valueAsDate = new Date();
 
-    // Helper for non-blocking storage API (falls back to localStorage)
-    async function getStoredData() {
-      if (window.storage && typeof window.storage.get === 'function') {
-        try {
-          const res = await window.storage.get(STORAGE_KEY);
-          return res ? JSON.parse(res.value || '[]') : [];
-        } catch (e) {
-          console.warn('window.storage error, falling back to localStorage', e);
-        }
-      }
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    function getSettings() {
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || { hourlyRate: 35.00, mileageRate: 0.67 };
     }
 
-    async function setStoredData(data) {
-      const serialized = JSON.stringify(data);
-      localStorage.setItem(STORAGE_KEY, serialized); // Always maintain local cache
-      
-      if (window.storage && typeof window.storage.set === 'function') {
-        try {
-          await window.storage.set(STORAGE_KEY, serialized);
-          updateSyncStatus('Synced to Cloud');
-        } catch (e) {
-          console.warn('window.storage set error', e);
-          updateSyncStatus('Saved locally');
-        }
-      } else {
-        updateSyncStatus('Saved locally');
-      }
+    function saveSettings() {
+      const settings = {
+        hourlyRate: parseFloat(document.getElementById('hourlyRate').value) || 0,
+        mileageRate: parseFloat(document.getElementById('mileageRate').value) || 0
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      toggleDrawer(false);
+      renderLogs();
     }
 
-    function updateSyncStatus(text) {
-      const el = document.getElementById('syncStatus');
-      if (el) el.innerText = text;
-    }
-
-    // Populate job dropdown suggestions from previous entries
-    function updateJobDatalist() {
-      const datalist = document.getElementById('existingJobsList');
-      if (!datalist) return;
-      
-      const uniqueJobs = [...new Set(entries.map(e => e.job).filter(Boolean))];
-      datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
-    }
-
-    // Quick Task handler function
-    async function logQuickTask() {
-      const taskDesc = document.getElementById('quickTaskDesc').value.trim();
-      const jobName = document.getElementById('quickTaskJob').value.trim();
-      const hoursToAdd = parseFloat(document.getElementById('quickTaskMins').value) || 0;
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      if (!taskDesc || !jobName) {
-        alert('Please provide both a task description and job name.');
-        return;
-      }
-
-      // Look for an existing entry for today with the exact same job name
-      let existingEntry = entries.find(e => e.date === todayStr && e.job.toLowerCase() === jobName.toLowerCase());
-
-      const mins = Math.round(hoursToAdd * 60);
-      const timeFormatted = mins >= 60 
-        ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
-        : `${mins}m`;
-
-      if (existingEntry) {
-        // Append task to description and update total hours
-        existingEntry.hours = parseFloat((existingEntry.hours + hoursToAdd).toFixed(2));
-        existingEntry.desc = existingEntry.desc 
-          ? `${existingEntry.desc}\n• [${timeFormatted}] ${taskDesc}` 
-          : `• [${timeFormatted}] ${taskDesc}`;
-      } else {
-        // Create new lightweight entry if none exists for today
-        const newEntry = {
-          id: Date.now(),
-          date: todayStr,
-          job: jobName,
-          code: '',
-          hours: hoursToAdd,
-          timeIn: '',
-          timeOut: '',
-          breakMins: 0,
-          startMiles: 0,
-          endMiles: 0,
-          totalMiles: 0,
-          desc: `• [${timeFormatted}] ${taskDesc}`,
-          notes: ''
-        };
-        entries.push(newEntry);
-      }
-
-      await setStoredData(entries);
-      
-      // Clear inputs
-      document.getElementById('quickTaskDesc').value = '';
-      document.getElementById('quickTaskJob').value = '';
-      
-      // Refresh views
-      renderSummaries();
-      updateJobDatalist();
-    }
-
-    async function initApp() {
-      updateSyncStatus('Syncing...');
-      entries = await getStoredData();
-      updateSyncStatus('Synced');
-      autoFillPreviousMileage();
-      updateJobDatalist();
-      renderSummaries();
-    }
-
-    function toggleMenu() {
+    function toggleDrawer(open) {
       const drawer = document.getElementById('settingsDrawer');
-      drawer.classList.toggle('open');
-    }
-
-    function autoFillPreviousMileage() {
-      const isEditing = document.getElementById('editingId').value !== '';
-      if (isEditing || entries.length === 0) return;
-
-      const currentDateStr = document.getElementById('entryDate').value;
-      if (!currentDateStr) return;
-
-      const currentDate = new Date(currentDateStr);
-
-      const priorEntries = entries.filter(e => {
-        const eDate = new Date(e.date);
-        return eDate <= currentDate && (e.endMiles || e.startMiles);
-      });
-
-      if (priorEntries.length > 0) {
-        priorEntries.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
-        const prevEntry = priorEntries[0];
-        const prevMiles = prevEntry.endMiles || prevEntry.startMiles;
-
-        if (prevMiles && prevMiles > 0) {
-          const startMilesInput = document.getElementById('entryStartMiles');
-          startMilesInput.value = prevMiles;
-          document.getElementById('autofillTag').innerText = '(⚡ Auto-filled)';
-          calculateTotalMiles();
-          return;
-        }
-      }
-
-      document.getElementById('autofillTag').innerText = '';
-    }
-
-    function calculateHoursFromTimes() {
-      const timeIn = document.getElementById('entryTimeIn').value;
-      const timeOut = document.getElementById('entryTimeOut').value;
-      const breakMins = parseFloat(document.getElementById('entryBreak').value) || 0;
-
-      if (timeIn && timeOut) {
-        const [h1, m1] = timeIn.split(':').map(Number);
-        const [h2, m2] = timeOut.split(':').map(Number);
-        let startMins = h1 * 60 + m1;
-        let endMins = h2 * 60 + m2;
-        if (endMins < startMins) endMins += 24 * 60;
-
-        const grossMins = endMins - startMins;
-        const netMins = Math.max(0, grossMins - breakMins);
-        document.getElementById('entryHours').value = (netMins / 60).toFixed(2);
+      drawer.classList.toggle('active', open);
+      if (open) {
+        const settings = getSettings();
+        document.getElementById('hourlyRate').value = settings.hourlyRate;
+        document.getElementById('mileageRate').value = settings.mileageRate;
       }
     }
 
-    function calculateTotalMiles() {
-      const start = parseFloat(document.getElementById('entryStartMiles').value);
-      const end = parseFloat(document.getElementById('entryEndMiles').value);
-      const totalField = document.getElementById('entryTotalMiles');
+    function getLogs() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    }
 
-      if (!isNaN(start) && !isNaN(end)) {
-        if (end >= start) {
-          totalField.value = (end - start).toFixed(1);
-          totalField.style.color = '#1e293b';
-        } else {
-          totalField.value = '0.0';
-          totalField.style.color = '#dc2626';
-        }
-      } else {
-        totalField.value = '';
-        totalField.style.color = '#1e293b';
+    function saveLogs(logs) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+      renderLogs();
+    }
+
+    function setNextOdometer() {
+      const logs = getLogs();
+      if (logs.length > 0 && logs[0].endOdo) {
+        document.getElementById('startOdo').value = logs[0].endOdo;
       }
     }
 
-    async function saveEntry(e) {
+    document.getElementById('shiftForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const editingId = document.getElementById('editingId').value;
-      const newDate = document.getElementById('entryDate').value;
-      const startMiles = parseFloat(document.getElementById('entryStartMiles').value) || 0;
-      let endMiles = parseFloat(document.getElementById('entryEndMiles').value) || 0;
+      const date = document.getElementById('shiftDate').value;
+      const start = document.getElementById('startTime').value;
+      const end = document.getElementById('endTime').value;
+      const startOdo = parseFloat(document.getElementById('startOdo').value) || 0;
+      const endOdo = parseFloat(document.getElementById('endOdo').value) || 0;
+      const notes = document.getElementById('shiftNotes').value;
 
-      const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
+      const startTimeObj = new Date(`${date}T${start}`);
+      const endTimeObj = new Date(`${date}T${end}`);
+      let hours = (endTimeObj - startTimeObj) / (1000 * 60 * 60);
+      if (hours < 0) hours += 24;
 
-      if (editingId) {
-        const index = entries.findIndex(item => item.id == editingId);
-        if (index !== -1) {
-          entries[index] = {
-            ...entries[index],
-            date: newDate,
-            job: document.getElementById('entryJob').value,
-            code: document.getElementById('entryCode').value,
-            hours: parseFloat(document.getElementById('entryHours').value) || 0,
-            timeIn: document.getElementById('entryTimeIn').value,
-            timeOut: document.getElementById('entryTimeOut').value,
-            breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
-            startMiles: startMiles,
-            endMiles: endMiles,
-            totalMiles: totalMiles,
-            desc: document.getElementById('entryDesc').value,
-            notes: document.getElementById('entryNotes').value
-          };
-        }
-      } else {
-        const newEntry = {
-          id: Date.now(),
-          date: newDate,
-          job: document.getElementById('entryJob').value,
-          code: document.getElementById('entryCode').value,
-          hours: parseFloat(document.getElementById('entryHours').value) || 0,
-          timeIn: document.getElementById('entryTimeIn').value,
-          timeOut: document.getElementById('entryTimeOut').value,
-          breakMins: parseFloat(document.getElementById('entryBreak').value) || 0,
-          startMiles: startMiles,
-          endMiles: endMiles,
-          totalMiles: totalMiles,
-          desc: document.getElementById('entryDesc').value,
-          notes: document.getElementById('entryNotes').value
-        };
-        entries.push(newEntry);
-      }
+      const miles = endOdo > startOdo ? (endOdo - startOdo) : 0;
 
-      await setStoredData(entries);
-      resetForm();
-      renderSummaries();
-      updateJobDatalist();
-    }
+      const newLog = {
+        id: Date.now(),
+        type: 'Shift',
+        date,
+        hours: parseFloat(hours.toFixed(2)),
+        startOdo,
+        endOdo,
+        miles: parseFloat(miles.toFixed(1)),
+        notes
+      };
 
-    function editEntry(id) {
-      const entry = entries.find(e => e.id == id);
-      if (!entry) return;
+      const logs = getLogs();
+      logs.unshift(newLog);
+      saveLogs(logs);
 
-      document.getElementById('editingId').value = entry.id;
-      document.getElementById('entryDate').value = entry.date;
-      document.getElementById('entryJob').value = entry.job || '';
-      document.getElementById('entryCode').value = entry.code || '';
-      document.getElementById('entryHours').value = entry.hours || '';
-      document.getElementById('entryTimeIn').value = entry.timeIn || '';
-      document.getElementById('entryTimeOut').value = entry.timeOut || '';
-      document.getElementById('entryBreak').value = entry.breakMins || 0;
-      document.getElementById('entryStartMiles').value = entry.startMiles || '';
-      document.getElementById('entryEndMiles').value = entry.endMiles || '';
-      document.getElementById('entryDesc').value = entry.desc || '';
-      document.getElementById('entryNotes').value = entry.notes || '';
-      document.getElementById('autofillTag').innerText = '';
-
-      calculateTotalMiles();
-
-      document.getElementById('formHeader').innerText = 'Edit Shift Entry';
-      document.getElementById('submitBtn').innerText = 'Update Entry';
-      document.getElementById('cancelBtn').style.display = 'block';
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function resetForm() {
       document.getElementById('shiftForm').reset();
-      document.getElementById('editingId').value = '';
-      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('entryBreak').value = "0";
-      document.getElementById('entryTotalMiles').value = '';
-      document.getElementById('autofillTag').innerText = '';
-      document.getElementById('formHeader').innerText = 'Log New Shift';
-      document.getElementById('submitBtn').innerText = 'Add Entry';
-      document.getElementById('cancelBtn').style.display = 'none';
+      document.getElementById('shiftDate').valueAsDate = new Date();
+      setNextOdometer();
+    });
 
-      autoFillPreviousMileage();
+    document.getElementById('taskForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const taskType = document.getElementById('taskType').value;
+      const duration = parseFloat(document.getElementById('taskDuration').value) || 0;
+
+      const newLog = {
+        id: Date.now(),
+        type: 'Task',
+        date: new Date().toISOString().split('T')[0],
+        hours: duration,
+        miles: 0,
+        notes: taskType
+      };
+
+      const logs = getLogs();
+      logs.unshift(newLog);
+      saveLogs(logs);
+
+      document.getElementById('taskDuration').value = '';
+    });
+
+    function deleteLog(id) {
+      const logs = getLogs().filter(log => log.id !== id);
+      saveLogs(logs);
     }
 
-    function getWeekKey(dateStr, startOfWeek) {
-      const d = new Date(dateStr + 'T00:00:00');
-      const day = d.getDay();
-      const targetStartDay = parseInt(startOfWeek, 10);
+    function renderLogs() {
+      const logs = getLogs();
+      const settings = getSettings();
+      const logList = document.getElementById('logList');
+      logList.innerHTML = '';
 
-      let diff = d.getDate() - day + targetStartDay;
-      if (day < targetStartDay) {
-        diff -= 7;
-      }
-      
-      const weekStart = new Date(d.setDate(diff));
-      return weekStart.toISOString().split('T')[0];
-    }
+      let totalHours = 0;
+      let totalMiles = 0;
 
-    function renderSummaries() {
-      const container = document.getElementById('summaryContainer');
-      container.innerHTML = '';
-      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
-      const startOfWeek = document.getElementById('startOfWeek').value;
+      logs.forEach(log => {
+        totalHours += log.hours || 0;
+        totalMiles += log.miles || 0;
 
-      if (entries.length === 0) {
-        container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
-        return;
-      }
-
-      const weeks = {};
-      entries.forEach(e => {
-        const wKey = getWeekKey(e.date, startOfWeek);
-        if (!weeks[wKey]) weeks[wKey] = [];
-        weeks[wKey].push(e);
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `
+          <div class="log-info">
+            <span class="log-date">${log.date} — ${log.notes || log.type}</span>
+            <span class="log-sub">${log.hours} hrs ${log.miles ? `• ${log.miles} mi` : ''}</span>
+          </div>
+          <button class="btn-icon" onclick="deleteLog(${log.id})">🗑️</button>
+        `;
+        logList.appendChild(item);
       });
 
-      Object.keys(weeks).sort().reverse().forEach(wKey => {
-        let wHours = 0, wMiles = 0;
-        weeks[wKey].forEach(e => {
-          wHours += parseFloat(e.hours || 0);
-          wMiles += parseFloat(e.totalMiles || 0);
-        });
-        const wPay = (wHours * rate).toFixed(2);
-        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+      const totalGross = (totalHours * settings.hourlyRate) + (totalMiles * settings.mileageRate);
 
-        let html = `
-          <div class="week-card">
-            <div class="week-header">
-              <h3 class="week-title">📅 Week of ${wKey}</h3>
-              <div class="week-stats-pills">
-                <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
-                <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi ($${wMileageDeduction})</span>
-                <span class="stat-pill pay">💰 $${wPay}</span>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="summary-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Job</th>
-                    <th>Hrs</th>
-                    <th class="no-print">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>`;
-
-        weeks[wKey].forEach(e => {
-          const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.breakMins || e.totalMiles || e.startMiles || e.endMiles;
-
-          html += `<tr>
-            <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
-            <td>
-              <strong>${e.job}</strong><br/>
-              ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
-              
-              ${hasDetails ? `
-                <details class="entry-details no-print">
-                  <summary>Details ▼</summary>
-                  <div class="details-box">
-                    ${e.timeIn || e.timeOut ? `<div>⏰ <strong>Time:</strong> ${e.timeIn || '--'} to ${e.timeOut || '--'}</div>` : ''}
-                    ${e.breakMins ? `<div>☕ <strong>Unpaid Break:</strong> ${e.breakMins} mins</div>` : ''}
-                    ${e.totalMiles || e.startMiles || e.endMiles ? `<div>🚚 <strong>Miles:</strong> ${e.totalMiles || 0} mi (${e.startMiles || 0} ➔ ${e.endMiles || 0})</div>` : ''}
-                    ${e.desc ? `<div style="margin-top: 4px;"><strong>Work:</strong> ${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
-                    ${e.notes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> <i>${e.notes}</i></div>` : ''}
-                  </div>
-                </details>
-              ` : ''}
-            </td>
-            <td style="font-weight: 600;">${e.hours}</td>
-            <td class="no-print" style="white-space: nowrap;">
-              <button class="action-btn" onclick="editEntry(${e.id})">✏️</button>
-              <button class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
-            </td>
-          </tr>`;
-        });
-
-        html += `</tbody></table></div></div>`;
-        container.innerHTML += html;
-      });
-    }
-
-    async function deleteEntry(id) {
-      if (confirm('Delete this entry?')) {
-        entries = entries.filter(e => e.id != id);
-        await setStoredData(entries);
-        renderSummaries();
-        autoFillPreviousMileage();
-        updateJobDatalist();
-      }
-    }
-
-    async function clearAllEntries() {
-      if (confirm('Clear all entries? This action cannot be undone.')) {
-        entries = [];
-        await setStoredData(entries);
-        renderSummaries();
-        document.getElementById('entryStartMiles').value = '';
-        document.getElementById('autofillTag').innerText = '';
-        updateJobDatalist();
-      }
+      document.getElementById('totalHours').innerText = totalHours.toFixed(1);
+      document.getElementById('totalMiles').innerText = totalMiles.toFixed(1);
+      document.getElementById('totalEarnings').innerText = `$${totalGross.toFixed(2)}`;
     }
 
     function exportCSV() {
-      let csv = 'Date,Job,Code,Hours,Break (mins),Start Miles,End Miles,Total Miles,Description,Notes\n';
-      entries.forEach(e => {
-        csv += `"${e.date}","${e.job}","${e.code || ''}",${e.hours},${e.breakMins || 0},${e.startMiles || 0},${e.endMiles || 0},${e.totalMiles || 0},"${(e.desc || '').replace(/"/g, '""')}","${(e.notes || '').replace(/"/g, '""')}"\n`;
+      const logs = getLogs();
+      if (!logs.length) return alert('No logs available to export.');
+
+      let csv = 'ID,Date,Type,Hours,Miles,Notes\n';
+      logs.forEach(l => {
+        csv += `${l.id},${l.date},${l.type},${l.hours},${l.miles || 0},"${l.notes || ''}"\n`;
       });
+
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', 'shiftlog_export.csv');
+      a.href = url;
+      a.download = `shiftlog_export_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
     }
 
-    // Boot app
-    initApp();
+    renderLogs();
+    setNextOdometer();
   </script>
 </body>
 </html>
