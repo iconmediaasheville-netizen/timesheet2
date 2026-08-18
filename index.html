@@ -441,6 +441,12 @@
       display: none;
     }
 
+    @media print {
+      .print-only {
+        display: block;
+      }
+    }
+
     .calendar-week {
       page-break-inside: avoid;
       margin-bottom: 22px;
@@ -491,6 +497,28 @@
       color: #cbd5e1;
     }
 
+    .summary-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .summary-header-row h2 {
+      margin: 0;
+    }
+
+    .summary-toggle-icon {
+      font-size: 0.85rem;
+      color: #9a3412;
+      transition: transform 0.15s ease;
+    }
+
+    #summaryContainer.collapsed {
+      display: none;
+    }
+
     @media print {
       #summaryContainer {
         display: none !important;
@@ -511,13 +539,20 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v1.4 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v1.5 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
     </div>
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.5</div>
+        <ul>
+          <li>Fixed Print/PDF showing blank output</li>
+          <li>Weekly Log Summaries can now be collapsed to save scroll space (tap the header to expand/collapse)</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v1.4</div>
         <ul>
@@ -718,7 +753,10 @@
     </div>
 
     <!-- Summary Section -->
-    <h2>Weekly Log Summaries</h2>
+    <div class="summary-header-row no-print" onclick="toggleSummarySection()">
+      <h2>Weekly Log Summaries</h2>
+      <span id="summaryToggleIcon" class="summary-toggle-icon">▾</span>
+    </div>
 
     <div class="top-actions no-print">
       <button class="btn-secondary" onclick="exportCSV()">Manual CSV Export</button>
@@ -1141,6 +1179,18 @@
       renderSummaries();
       await restoreDraftIfPresent();
 
+      // Weekly summaries collapsed by default to save scroll space; remembers your choice after that
+      const savedCollapsed = localStorage.getItem('shiftlog_summary_collapsed');
+      const summaryContainerEl = document.getElementById('summaryContainer');
+      const summaryToggleIconEl = document.getElementById('summaryToggleIcon');
+      if (savedCollapsed === null || savedCollapsed === 'true') {
+        summaryContainerEl.classList.add('collapsed');
+        summaryToggleIconEl.innerText = '▸';
+      } else {
+        summaryContainerEl.classList.remove('collapsed');
+        summaryToggleIconEl.innerText = '▾';
+      }
+
       // Autosave the in-progress entry as a draft on any change to the form
       const formEl = document.getElementById('shiftForm');
       if (formEl) {
@@ -1160,6 +1210,14 @@
     function toggleMenu() {
       const drawer = document.getElementById('settingsDrawer');
       drawer.classList.toggle('open');
+    }
+
+    function toggleSummarySection() {
+      const container = document.getElementById('summaryContainer');
+      const icon = document.getElementById('summaryToggleIcon');
+      const isCollapsed = container.classList.toggle('collapsed');
+      icon.innerText = isCollapsed ? '▸' : '▾';
+      localStorage.setItem('shiftlog_summary_collapsed', isCollapsed ? 'true' : 'false');
     }
 
     function toggleChangelog() {
