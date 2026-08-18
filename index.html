@@ -787,7 +787,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v2.3 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v2.4 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -804,6 +804,12 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.4</div>
+        <ul>
+          <li>Added a Clear button to the Invoice Generator to reset the job, dates, and preview without needing to reload the page</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v2.3</div>
         <ul>
@@ -1147,6 +1153,9 @@
       <div class="row no-print">
         <button type="button" class="btn-secondary" onclick="generateInvoice()">Generate Invoice</button>
         <button type="button" class="btn-secondary" onclick="printInvoice()">🖨️ Print / Save as PDF</button>
+      </div>
+      <div class="row no-print">
+        <button type="button" class="btn-secondary" onclick="clearInvoice()" style="background: #f1f5f9; color: #64748b;">Clear</button>
       </div>
 
       <div id="invoiceResult"></div>
@@ -1751,6 +1760,7 @@
       renderPrepList();
     }
 
+    // Shows every logged entry for a given job, most recent first, with edit/delete right from the list
     // Keeps the recent-job chip highlighting in sync without a full re-render (cheap, called often)
     function syncHistoryChipActiveState() {
       const container = document.getElementById('recentJobsHistory');
@@ -2710,6 +2720,15 @@
       }
       document.body.classList.add('printing-invoice');
       window.print();
+    }
+
+    // Resets the Invoice card back to blank — nothing here is saved, so this just clears the on-screen preview
+    function clearInvoice() {
+      document.getElementById('invoiceJob').value = '';
+      document.getElementById('invoiceStart').value = '';
+      document.getElementById('invoiceEnd').value = '';
+      document.getElementById('invoiceIncludeMileage').checked = false;
+      document.getElementById('invoiceResult').innerHTML = '';
     }
 
     window.addEventListener('afterprint', () => {
