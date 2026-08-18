@@ -63,6 +63,25 @@
       font-size: 1.25rem;
       cursor: pointer;
       color: var(--primary);
+      position: relative;
+    }
+
+    .hamburger-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #dc2626;
+      color: #ffffff;
+      border-radius: 50%;
+      min-width: 17px;
+      height: 17px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      line-height: 1;
     }
 
     .settings-drawer {
@@ -586,6 +605,12 @@
       color: #ffffff;
     }
 
+    .recent-job-chip.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 0 0 2px var(--primary) inset;
+    }
+
     .recent-jobs-empty {
       font-size: 0.78rem;
       color: #94a3b8;
@@ -628,6 +653,120 @@
       white-space: nowrap;
     }
 
+    .job-info-block {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+    }
+
+    .job-info-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .job-info-link:hover {
+      text-decoration: underline;
+    }
+
+    .prep-reminder-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #9a3412;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .prep-reminder-toggle-icon {
+      font-size: 0.8rem;
+    }
+
+    .prep-reminder-panel {
+      display: none;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .prep-reminder-group {
+      margin-bottom: 10px;
+    }
+
+    .prep-reminder-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .prep-reminder-job {
+      font-weight: 700;
+      color: #9a3412;
+      font-size: 0.82rem;
+      margin-bottom: 4px;
+    }
+
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .invoice-bill-to {
+      margin-bottom: 14px;
+      font-size: 0.9rem;
+    }
+
+    .invoice-bill-to div {
+      color: #475569;
+      font-size: 0.85rem;
+    }
+
+    .invoice-totals {
+      margin-top: 14px;
+      text-align: right;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    .invoice-totals div {
+      margin-bottom: 4px;
+    }
+
+    .invoice-grand-total {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #9a3412;
+      border-top: 2px solid var(--border);
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+
+    @media print {
+      .invoice-card {
+        display: none !important;
+      }
+      body.printing-invoice .invoice-card {
+        display: block !important;
+      }
+      body.printing-invoice .print-only {
+        display: none !important;
+      }
+    }
+
     @media print {
       #summaryContainer {
         display: none !important;
@@ -648,13 +787,49 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v1.8 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v2.3 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
-      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
+      <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
+        ☰
+        <span id="hamburgerBadge" class="hamburger-badge" style="display: none;"></span>
+      </button>
     </div>
+
+    <!-- Prep Reminder Bar -->
+    <div id="prepReminderBar" class="prep-reminder-bar no-print" onclick="togglePrepReminder()" style="display: none;">
+      <span id="prepReminderSummary">🎒 0 items to bring</span>
+      <span id="prepReminderIcon" class="prep-reminder-toggle-icon">▾</span>
+    </div>
+    <div id="prepReminderPanel" class="prep-reminder-panel no-print" style="display: none;"></div>
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.3</div>
+        <ul>
+          <li>Job History recent-job chips now highlight the active one and collapse it back down if you tap it again</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.2</div>
+        <ul>
+          <li>Added a Prep List reminder: a red badge on the ☰ menu and a tappable bar at the top of the page show how many "things to bring" items are still unchecked across all jobs — tap it to see and check them off without hunting through each job</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.1</div>
+        <ul>
+          <li>Fixed mileage auto-fill: if you go back and add End Miles you'd left blank, the next day's Start Miles now updates automatically instead of staying stuck on the old value</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.0</div>
+        <ul>
+          <li>Added client phone/email and job site address (with tap-to-navigate map link) to Manage Job Details</li>
+          <li>Added an Invoice Generator — pick a job and date range, then print/save a PDF invoice</li>
+          <li>Deleted entries now go to Trash instead of vanishing — restore or permanently delete from Settings</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v1.8</div>
         <ul>
@@ -740,12 +915,18 @@
           Keep screen awake while app is open 💡
         </label>
       </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Your Business / Name (shown on invoices)</label>
+        <input type="text" id="businessName" placeholder="e.g. Smith Handyman Services" onchange="saveBusinessName()" />
+      </div>
 
-      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Door Codes by Job</h3>
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Job Details</h3>
       <div class="form-group">
         <label>Job</label>
-        <input type="text" id="manageCodeJob" list="existingJobsList" placeholder="Type or select job..." oninput="renderManageCodes()" />
+        <input type="text" id="manageCodeJob" list="existingJobsList" placeholder="Type or select job..." oninput="renderManageCodes(); renderManageJobInfo();" />
       </div>
+
+      <label style="margin-top: 8px;">Door Codes / Quick Ref</label>
       <div id="manageCodesList"></div>
       <div class="row">
         <div class="form-group" style="flex: 2;">
@@ -753,6 +934,23 @@
         </div>
         <button type="button" class="btn-secondary" onclick="addManageCode()">Add</button>
       </div>
+
+      <div class="form-group" style="margin-top: 12px;">
+        <label>Client Phone</label>
+        <input type="tel" id="manageJobPhone" placeholder="e.g. (555) 123-4567" onchange="saveJobInfoField('phone', this.value)" />
+      </div>
+      <div class="form-group">
+        <label>Client Email</label>
+        <input type="email" id="manageJobEmail" placeholder="client@email.com" onchange="saveJobInfoField('email', this.value)" />
+      </div>
+      <div class="form-group">
+        <label>Job Site Address</label>
+        <input type="text" id="manageJobAddress" placeholder="123 Main St, City, State" onchange="saveJobInfoField('address', this.value)" />
+      </div>
+
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">🗑️ Recently Deleted</h3>
+      <div id="trashList"></div>
+      <button type="button" class="btn-secondary" onclick="emptyTrash()" style="margin-top: 6px;">Empty Trash</button>
     </div>
 
     <!-- Entry Form -->
@@ -891,6 +1089,8 @@
 
       <div id="recentJobsPrep" class="recent-jobs-row"></div>
 
+      <div id="jobInfoPrep" class="job-info-block"></div>
+
       <div id="prepItemList" class="prep-item-list"></div>
 
       <div class="row">
@@ -911,7 +1111,45 @@
 
       <div id="recentJobsHistory" class="recent-jobs-row"></div>
 
+      <div id="jobInfoHistory" class="job-info-block"></div>
+
       <div id="jobHistoryList"></div>
+    </div>
+
+    <!-- Invoice Card -->
+    <div class="card invoice-card">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;" class="no-print">🧾 Invoice Generator</h2>
+      <div class="form-group no-print">
+        <label>Job</label>
+        <input type="text" id="invoiceJob" list="existingJobsList" placeholder="Select or type job..." />
+      </div>
+
+      <div id="recentJobsInvoice" class="recent-jobs-row no-print"></div>
+
+      <div class="row no-print">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="invoiceStart" />
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="invoiceEnd" />
+        </div>
+      </div>
+
+      <div class="form-group no-print">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="invoiceIncludeMileage" style="width: auto;" />
+          Include mileage as a billed line item
+        </label>
+      </div>
+
+      <div class="row no-print">
+        <button type="button" class="btn-secondary" onclick="generateInvoice()">Generate Invoice</button>
+        <button type="button" class="btn-secondary" onclick="printInvoice()">🖨️ Print / Save as PDF</button>
+      </div>
+
+      <div id="invoiceResult"></div>
     </div>
 
     <!-- Summary Section -->
@@ -937,9 +1175,13 @@
     const JOBCODES_KEY = 'shiftlog_jobcodes';
     const DRAFT_KEY = 'shiftlog_draft';
     const PREPITEMS_KEY = 'shiftlog_prepitems';
+    const JOBINFO_KEY = 'shiftlog_jobinfo';
+    const TRASH_KEY = 'shiftlog_trash';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
+    let jobInfo = {}; // { normalizedJobKey: { label, phone, email, address } }
+    let trashedEntries = []; // deleted entries, restorable
     let wakeLock = null;
 
     // Set initial date
@@ -1190,6 +1432,171 @@
       }
     }
 
+    // Storage helpers for per-job contact info (phone, email, address)
+    async function getStoredJobInfo() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(JOBINFO_KEY);
+          return res ? JSON.parse(res.value || '{}') : {};
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(JOBINFO_KEY) || '{}');
+    }
+
+    async function setStoredJobInfo(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(JOBINFO_KEY, serialized);
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(JOBINFO_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    function getJobInfo(job) {
+      const key = normalizeJobKey(job);
+      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '' };
+    }
+
+    async function saveJobInfoField(field, value) {
+      const job = document.getElementById('manageCodeJob').value;
+      if (!job.trim()) {
+        alert('Enter a job name first.');
+        return;
+      }
+      const key = normalizeJobKey(job);
+      if (!jobInfo[key]) {
+        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '' };
+      }
+      jobInfo[key][field] = value.trim();
+      jobInfo[key].label = job.trim();
+      await setStoredJobInfo(jobInfo);
+
+      // Refresh anywhere this job's info is displayed
+      renderJobHistory();
+      renderPrepList();
+    }
+
+    function renderManageJobInfo() {
+      const job = document.getElementById('manageCodeJob').value;
+      const info = getJobInfo(job);
+      document.getElementById('manageJobPhone').value = info.phone || '';
+      document.getElementById('manageJobEmail').value = info.email || '';
+      document.getElementById('manageJobAddress').value = info.address || '';
+    }
+
+    // Renders a compact tap-friendly block (address/phone/email) for the given job into the target container
+    function renderJobInfoBlock(containerId, job) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+
+      if (!job || !job.trim()) {
+        el.innerHTML = '';
+        return;
+      }
+
+      const info = getJobInfo(job);
+      if (!info.phone && !info.email && !info.address) {
+        el.innerHTML = '';
+        return;
+      }
+
+      const mapsUrl = info.address ? `https://maps.google.com/?q=${encodeURIComponent(info.address)}` : '';
+      const telHref = info.phone ? info.phone.replace(/[^0-9+]/g, '') : '';
+
+      el.innerHTML = `
+        ${info.address ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="job-info-link">📍 ${info.address}</a>` : ''}
+        ${info.phone ? `<a href="tel:${telHref}" class="job-info-link">📞 ${info.phone}</a>` : ''}
+        ${info.email ? `<a href="mailto:${info.email}" class="job-info-link">✉️ ${info.email}</a>` : ''}
+      `;
+    }
+
+    // Storage helpers for the deleted-entries trash (restore or permanently delete)
+    async function getStoredTrash() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(TRASH_KEY);
+          return res ? JSON.parse(res.value || '[]') : [];
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(TRASH_KEY) || '[]');
+    }
+
+    async function setStoredTrash(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(TRASH_KEY, serialized);
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(TRASH_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    function renderTrash() {
+      const listEl = document.getElementById('trashList');
+      if (!listEl) return;
+
+      if (trashedEntries.length === 0) {
+        listEl.innerHTML = '<div class="prep-empty">Trash is empty.</div>';
+        return;
+      }
+
+      listEl.innerHTML = trashedEntries.map(e => `
+        <div class="job-history-row">
+          <div class="job-history-date">${e.date}</div>
+          <div class="job-history-details">
+            <strong>${e.job}</strong> — ${e.hours} hrs
+          </div>
+          <div class="job-history-actions">
+            <button type="button" class="action-btn" title="Restore" onclick="restoreTrashItem(${e.id})">↩️</button>
+            <button type="button" class="action-btn" title="Delete Forever" onclick="permanentlyDeleteTrashItem(${e.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function restoreTrashItem(id) {
+      const idx = trashedEntries.findIndex(e => e.id == id);
+      if (idx === -1) return;
+
+      const [restored] = trashedEntries.splice(idx, 1);
+      delete restored.deletedAt;
+      entries.push(restored);
+
+      await setStoredData(entries);
+      await setStoredTrash(trashedEntries);
+
+      renderSummaries();
+      updateJobDatalist();
+      renderRecentJobs();
+      renderTrash();
+    }
+
+    async function permanentlyDeleteTrashItem(id) {
+      if (!confirm('Permanently delete this entry? This cannot be undone.')) return;
+      trashedEntries = trashedEntries.filter(e => e.id != id);
+      await setStoredTrash(trashedEntries);
+      renderTrash();
+    }
+
+    async function emptyTrash() {
+      if (trashedEntries.length === 0) return;
+      if (!confirm('Permanently delete everything in Trash? This cannot be undone.')) return;
+      trashedEntries = [];
+      await setStoredTrash(trashedEntries);
+      renderTrash();
+    }
+
     function getPrepItemsForJob(job) {
       const key = normalizeJobKey(job);
       if (!key || !prepItems[key]) return [];
@@ -1219,6 +1626,7 @@
 
       textInput.value = '';
       renderPrepList();
+      renderPrepReminder();
     }
 
     async function togglePrepItem(itemId) {
@@ -1230,6 +1638,7 @@
       if (item) item.done = !item.done;
       await setStoredPrepItems(prepItems);
       renderPrepList();
+      renderPrepReminder();
     }
 
     async function removePrepItem(itemId) {
@@ -1240,12 +1649,14 @@
       prepItems[key].items = prepItems[key].items.filter(i => i.id !== itemId);
       await setStoredPrepItems(prepItems);
       renderPrepList();
+      renderPrepReminder();
     }
 
     function renderPrepList() {
       const job = document.getElementById('prepListJob').value;
       const listEl = document.getElementById('prepItemList');
       const items = getPrepItemsForJob(job);
+      renderJobInfoBlock('jobInfoPrep', job);
 
       if (!job.trim()) {
         listEl.innerHTML = '<div class="prep-empty">Select or type a job above to see or add its prep list.</div>';
@@ -1266,10 +1677,96 @@
       `).join('');
     }
 
-    // Shows every logged entry for a given job, most recent first, with edit/delete right from the list
+    // Gathers every unchecked prep item across every job, for the top-of-page reminder
+    function getAllPendingPrepItems() {
+      const pending = [];
+      Object.values(prepItems).forEach(jobEntry => {
+        (jobEntry.items || []).forEach(item => {
+          if (!item.done) {
+            pending.push({ jobLabel: jobEntry.label, jobKey: normalizeJobKey(jobEntry.label), itemId: item.id, text: item.text });
+          }
+        });
+      });
+      return pending;
+    }
+
+    // Updates the hamburger badge, the collapsed reminder bar, and its expanded panel
+    function renderPrepReminder() {
+      const pending = getAllPendingPrepItems();
+      const badgeEl = document.getElementById('hamburgerBadge');
+      const barEl = document.getElementById('prepReminderBar');
+      const summaryEl = document.getElementById('prepReminderSummary');
+      const panelEl = document.getElementById('prepReminderPanel');
+      if (!badgeEl || !barEl || !summaryEl || !panelEl) return;
+
+      if (pending.length === 0) {
+        badgeEl.style.display = 'none';
+        barEl.style.display = 'none';
+        panelEl.style.display = 'none';
+        panelEl.innerHTML = '';
+        return;
+      }
+
+      badgeEl.style.display = 'flex';
+      badgeEl.innerText = pending.length;
+
+      barEl.style.display = 'flex';
+      summaryEl.innerText = `🎒 ${pending.length} item${pending.length === 1 ? '' : 's'} to bring`;
+
+      const byJob = {};
+      pending.forEach(p => {
+        if (!byJob[p.jobKey]) byJob[p.jobKey] = { label: p.jobLabel, items: [] };
+        byJob[p.jobKey].items.push(p);
+      });
+
+      panelEl.innerHTML = Object.values(byJob).map(group => `
+        <div class="prep-reminder-group">
+          <div class="prep-reminder-job">${group.label}</div>
+          ${group.items.map(item => `
+            <div class="prep-item-row">
+              <input type="checkbox" onchange="togglePrepItemGlobal('${group.label.replace(/'/g, "\\'")}', ${item.itemId})" />
+              <span class="prep-item-text">${item.text}</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+
+    function togglePrepReminder() {
+      const panelEl = document.getElementById('prepReminderPanel');
+      const iconEl = document.getElementById('prepReminderIcon');
+      const isOpen = panelEl.style.display === 'block';
+      panelEl.style.display = isOpen ? 'none' : 'block';
+      if (iconEl) iconEl.innerText = isOpen ? '▾' : '▴';
+    }
+
+    // Checking an item off from the top-of-page reminder (not the Prep List card itself)
+    async function togglePrepItemGlobal(jobLabel, itemId) {
+      const key = normalizeJobKey(jobLabel);
+      if (!prepItems[key]) return;
+      const item = prepItems[key].items.find(i => i.id === itemId);
+      if (item) item.done = !item.done;
+      await setStoredPrepItems(prepItems);
+      renderPrepReminder();
+      renderPrepList();
+    }
+
+    // Keeps the recent-job chip highlighting in sync without a full re-render (cheap, called often)
+    function syncHistoryChipActiveState() {
+      const container = document.getElementById('recentJobsHistory');
+      if (!container) return;
+      const currentJob = normalizeJobKey(document.getElementById('jobHistorySelect').value);
+      container.querySelectorAll('.recent-job-chip').forEach(btn => {
+        const btnJob = normalizeJobKey(btn.dataset.job);
+        btn.classList.toggle('active', !!currentJob && btnJob === currentJob);
+      });
+    }
+
     function renderJobHistory() {
       const job = document.getElementById('jobHistorySelect').value;
       const listEl = document.getElementById('jobHistoryList');
+      renderJobInfoBlock('jobInfoHistory', job);
+      syncHistoryChipActiveState();
 
       if (!job.trim()) {
         listEl.innerHTML = '<div class="prep-empty">Select or type a job above to see everything logged for it.</div>';
@@ -1351,15 +1848,30 @@
     }
 
     function selectRecentJobHistory(job) {
-      document.getElementById('jobHistorySelect').value = job;
+      const input = document.getElementById('jobHistorySelect');
+      const alreadySelected = normalizeJobKey(input.value) === normalizeJobKey(job);
+      // Tapping the already-active job again collapses it back down
+      input.value = alreadySelected ? '' : job;
       renderJobHistory();
+      renderRecentJobs();
+    }
+
+    function selectRecentJobInvoice(job) {
+      document.getElementById('invoiceJob').value = job;
+    }
+
+    function buildJobChipsHtml(jobs, activeJob) {
+      if (!jobs.length) return '<span class="recent-jobs-empty">No jobs in the last 7 days</span>';
+      const activeKey = activeJob ? normalizeJobKey(activeJob) : null;
+      return jobs.map(j => {
+        const isActive = activeKey && normalizeJobKey(j) === activeKey;
+        return `<button type="button" class="recent-job-chip${isActive ? ' active' : ''}" data-job="${j.replace(/"/g, '&quot;')}">${j}</button>`;
+      }).join('');
     }
 
     function renderRecentJobs() {
       const jobs = getRecentJobs();
-      const chipsHtml = jobs.length
-        ? jobs.map(j => `<button type="button" class="recent-job-chip" data-job="${j.replace(/"/g, '&quot;')}">${j}</button>`).join('')
-        : '<span class="recent-jobs-empty">No jobs in the last 7 days</span>';
+      const chipsHtml = buildJobChipsHtml(jobs, null);
 
       const mainContainer = document.getElementById('recentJobsMain');
       if (mainContainer) {
@@ -1379,9 +1891,18 @@
 
       const historyContainer = document.getElementById('recentJobsHistory');
       if (historyContainer) {
-        historyContainer.innerHTML = chipsHtml;
+        const currentHistoryJob = document.getElementById('jobHistorySelect').value;
+        historyContainer.innerHTML = buildJobChipsHtml(jobs, currentHistoryJob);
         historyContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
           btn.addEventListener('click', () => selectRecentJobHistory(btn.dataset.job));
+        });
+      }
+
+      const invoiceContainer = document.getElementById('recentJobsInvoice');
+      if (invoiceContainer) {
+        invoiceContainer.innerHTML = chipsHtml;
+        invoiceContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
+          btn.addEventListener('click', () => selectRecentJobInvoice(btn.dataset.job));
         });
       }
     }
@@ -1544,15 +2065,24 @@
       entries = await getStoredData();
       jobCodes = await getStoredJobCodes();
       prepItems = await getStoredPrepItems();
+      jobInfo = await getStoredJobInfo();
+      trashedEntries = await getStoredTrash();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
       updateJobDatalist();
       renderRecentJobs();
       updateCodeDatalist();
       renderManageCodes();
+      renderManageJobInfo();
+      renderTrash();
       renderPrepList();
+      renderPrepReminder();
       renderSummaries();
       await restoreDraftIfPresent();
+
+      // Restore saved business name for invoices
+      const businessNameEl = document.getElementById('businessName');
+      if (businessNameEl) businessNameEl.value = localStorage.getItem('shiftlog_business_name') || '';
 
       // Weekly summaries collapsed by default to save scroll space; remembers your choice after that
       const savedCollapsed = localStorage.getItem('shiftlog_summary_collapsed');
@@ -1668,6 +2198,32 @@
       }
     }
 
+    // When an entry's ending mileage is added/corrected, carry that forward to the
+    // next chronological entry's starting mileage — but only if that next entry's
+    // start mileage still looks auto-filled (blank, or matching what this entry used
+    // to say) rather than something you deliberately typed in yourself.
+    function propagateMileageForward(savedEntry, oldBaseline) {
+      const newBaseline = parseFloat(savedEntry.endMiles) || parseFloat(savedEntry.startMiles) || 0;
+      if (!newBaseline) return;
+
+      const candidates = entries
+        .filter(e => e.id !== savedEntry.id)
+        .filter(e => e.date > savedEntry.date || (e.date === savedEntry.date && e.id > savedEntry.id))
+        .sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
+
+      const next = candidates[0];
+      if (!next) return;
+
+      const nextStart = parseFloat(next.startMiles) || 0;
+      const safeToUpdate = nextStart === 0 || (oldBaseline && nextStart === oldBaseline);
+
+      if (safeToUpdate && nextStart !== newBaseline) {
+        next.startMiles = newBaseline;
+        const nextEnd = parseFloat(next.endMiles) || 0;
+        next.totalMiles = nextEnd >= newBaseline ? (nextEnd - newBaseline) : 0;
+      }
+    }
+
     async function saveEntry(e) {
       e.preventDefault();
       const editingId = document.getElementById('editingId').value;
@@ -1679,9 +2235,15 @@
 
       const totalMiles = endMiles >= startMiles ? (endMiles - startMiles) : 0;
 
+      let oldBaseline = null;
+      let savedEntryRef = null;
+
       if (editingId) {
         const index = entries.findIndex(item => item.id == editingId);
         if (index !== -1) {
+          const oldE = entries[index];
+          oldBaseline = parseFloat(oldE.endMiles) || parseFloat(oldE.startMiles) || null;
+
           entries[index] = {
             ...entries[index],
             date: newDate,
@@ -1697,6 +2259,7 @@
             desc: document.getElementById('entryDesc').value,
             notes: document.getElementById('entryNotes').value
           };
+          savedEntryRef = entries[index];
         }
       } else {
         const newEntry = {
@@ -1715,6 +2278,15 @@
           notes: document.getElementById('entryNotes').value
         };
         entries.push(newEntry);
+        savedEntryRef = newEntry;
+      }
+
+      // If this entry's end mileage was just corrected/added, push the fix forward
+      // to the next day's start mileage too, as long as that next entry still looks
+      // like it was auto-filled (blank, or matching the old/incorrect baseline) rather
+      // than a value you typed in on purpose.
+      if (savedEntryRef) {
+        propagateMileageForward(savedEntryRef, oldBaseline);
       }
 
       // Remember this code against this job for next time
@@ -1961,24 +2533,38 @@
     }
 
     async function deleteEntry(id) {
-      if (confirm('Delete this entry?')) {
-        entries = entries.filter(e => e.id != id);
+      if (confirm('Delete this entry? You can restore it from Trash (in Settings) later.')) {
+        const idx = entries.findIndex(e => e.id == id);
+        if (idx !== -1) {
+          const [removed] = entries.splice(idx, 1);
+          removed.deletedAt = new Date().toISOString();
+          trashedEntries.unshift(removed);
+          await setStoredTrash(trashedEntries);
+        }
         await setStoredData(entries);
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
         renderRecentJobs();
+        renderTrash();
       }
     }
 
     async function clearAllEntries() {
-      if (confirm('Clear all entries? This action cannot be undone.')) {
+      if (entries.length === 0) return;
+      if (confirm('Clear all entries? They\'ll be moved to Trash (in Settings) and can be restored individually.')) {
+        const timestamp = new Date().toISOString();
+        entries.forEach(e => { e.deletedAt = timestamp; });
+        trashedEntries = [...entries, ...trashedEntries];
+        await setStoredTrash(trashedEntries);
+
         entries = [];
         await setStoredData(entries);
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
         renderRecentJobs();
+        renderTrash();
       }
     }
 
@@ -2016,6 +2602,119 @@
       link.click();
       document.body.removeChild(link);
     }
+
+    function saveBusinessName() {
+      const value = document.getElementById('businessName').value.trim();
+      localStorage.setItem('shiftlog_business_name', value);
+    }
+
+    // Builds a printable invoice for a job over a date range from its logged entries
+    function generateInvoice() {
+      const job = document.getElementById('invoiceJob').value;
+      const startDate = document.getElementById('invoiceStart').value;
+      const endDate = document.getElementById('invoiceEnd').value;
+      const includeMileage = document.getElementById('invoiceIncludeMileage').checked;
+      const resultEl = document.getElementById('invoiceResult');
+
+      if (!job.trim()) {
+        alert('Select a job first.');
+        return;
+      }
+      if (!startDate || !endDate) {
+        alert('Pick a start and end date.');
+        return;
+      }
+
+      const key = normalizeJobKey(job);
+      const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+
+      const rangeEntries = entries
+        .filter(e => normalizeJobKey(e.job) === key && e.date >= startDate && e.date <= endDate)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (rangeEntries.length === 0) {
+        resultEl.innerHTML = '<p class="prep-empty">No entries found for this job in that date range.</p>';
+        return;
+      }
+
+      const info = getJobInfo(job);
+      const businessName = localStorage.getItem('shiftlog_business_name') || '';
+
+      let totalHours = 0, totalMiles = 0;
+      const rows = rangeEntries.map(e => {
+        const hrs = parseFloat(e.hours || 0);
+        totalHours += hrs;
+        totalMiles += parseFloat(e.totalMiles || 0);
+        const amount = (hrs * rate).toFixed(2);
+        return `<tr>
+          <td>${e.date}</td>
+          <td>${(e.desc || '').replace(/\n/g, '<br/>') || '—'}</td>
+          <td style="text-align:right;">${e.hours}</td>
+          <td style="text-align:right;">$${rate.toFixed(2)}</td>
+          <td style="text-align:right;">$${amount}</td>
+        </tr>`;
+      }).join('');
+
+      const laborTotal = totalHours * rate;
+      const mileageTotal = totalMiles * mileageRate;
+      const grandTotal = laborTotal + (includeMileage ? mileageTotal : 0);
+
+      resultEl.innerHTML = `
+        <div class="invoice-header">
+          <div>
+            <h2 style="margin:0;">INVOICE</h2>
+            ${businessName ? `<div>${businessName}</div>` : ''}
+          </div>
+          <div style="text-align:right; font-size:0.85rem; color:#64748b;">
+            <div>Date: ${new Date().toISOString().split('T')[0]}</div>
+            <div>Period: ${startDate} to ${endDate}</div>
+          </div>
+        </div>
+        <div class="invoice-bill-to">
+          <strong>Bill To:</strong> ${job}
+          ${info.address ? `<div>${info.address}</div>` : ''}
+          ${info.phone ? `<div>${info.phone}</div>` : ''}
+          ${info.email ? `<div>${info.email}</div>` : ''}
+        </div>
+        <div class="table-responsive">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th style="text-align:right;">Hours</th>
+                <th style="text-align:right;">Rate</th>
+                <th style="text-align:right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="invoice-totals">
+          <div>Total Hours: ${totalHours.toFixed(2)}</div>
+          <div>Labor Subtotal: $${laborTotal.toFixed(2)}</div>
+          ${includeMileage
+            ? `<div>Mileage (${totalMiles.toFixed(1)} mi @ $${mileageRate.toFixed(3)}/mi): $${mileageTotal.toFixed(2)}</div>`
+            : `<div style="color:#94a3b8;">Mileage driven: ${totalMiles.toFixed(1)} mi (not billed)</div>`}
+          <div class="invoice-grand-total">Total Due: $${grandTotal.toFixed(2)}</div>
+        </div>
+      `;
+    }
+
+    function printInvoice() {
+      const resultEl = document.getElementById('invoiceResult');
+      if (!resultEl || !resultEl.innerHTML.trim()) {
+        alert('Generate the invoice first.');
+        return;
+      }
+      document.body.classList.add('printing-invoice');
+      window.print();
+    }
+
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-invoice');
+    });
 
     // Initialize application on page load
     window.addEventListener('DOMContentLoaded', initApp);
