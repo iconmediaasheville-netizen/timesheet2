@@ -519,6 +519,78 @@
       display: none;
     }
 
+    .prep-item-list {
+      margin-bottom: 10px;
+    }
+
+    .prep-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #ffedd5;
+    }
+
+    .prep-item-row:last-child {
+      border-bottom: none;
+    }
+
+    .prep-item-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .prep-item-text {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .prep-item-text.done {
+      text-decoration: line-through;
+      color: #94a3b8;
+    }
+
+    .prep-item-row .action-btn {
+      flex-shrink: 0;
+    }
+
+    .prep-empty {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .recent-jobs-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: -6px;
+      margin-bottom: 12px;
+    }
+
+    .recent-job-chip {
+      background: var(--primary-light);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: #9a3412;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .recent-job-chip:hover {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .recent-jobs-empty {
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+
     @media print {
       #summaryContainer {
         display: none !important;
@@ -539,13 +611,25 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v1.5 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v1.7 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
     </div>
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.7</div>
+        <ul>
+          <li>Added tappable "recent jobs" chips (last 7 days) to the Log New Shift form and the Prep List, so you can jump back to a job without retyping it</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.6</div>
+        <ul>
+          <li>Added a Prep List card — jot down what to bring for a job (tools, invoices, materials) and check items off before you head out</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v1.5</div>
         <ul>
@@ -652,6 +736,8 @@
           </div>
         </div>
 
+        <div id="recentJobsMain" class="recent-jobs-row no-print"></div>
+
         <div class="row">
           <div class="form-group">
             <label>Door Codes / Quick Ref <span id="codeAutofillTag" class="autofill-tag"></span></label>
@@ -752,6 +838,26 @@
       <button type="button" class="btn-submit" onclick="logQuickTask()" style="background: #334155;">+ Append Quick Task</button>
     </div>
 
+    <!-- Prep List Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">🎒 Prep List — Things to Bring</h2>
+      <div class="form-group">
+        <label>Job</label>
+        <input type="text" id="prepListJob" list="existingJobsList" placeholder="Select or type job..." oninput="renderPrepList()" />
+      </div>
+
+      <div id="recentJobsPrep" class="recent-jobs-row"></div>
+
+      <div id="prepItemList" class="prep-item-list"></div>
+
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="prepItemNew" placeholder="e.g. ladder, invoice, paint samples..." onkeydown="if(event.key==='Enter'){event.preventDefault();addPrepItem();}" />
+        </div>
+        <button type="button" class="btn-secondary" onclick="addPrepItem()">Add</button>
+      </div>
+    </div>
+
     <!-- Summary Section -->
     <div class="summary-header-row no-print" onclick="toggleSummarySection()">
       <h2>Weekly Log Summaries</h2>
@@ -774,8 +880,10 @@
     const STORAGE_KEY = 'shiftlog_entries';
     const JOBCODES_KEY = 'shiftlog_jobcodes';
     const DRAFT_KEY = 'shiftlog_draft';
+    const PREPITEMS_KEY = 'shiftlog_prepitems';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
+    let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
     let wakeLock = null;
 
     // Set initial date
@@ -1000,6 +1108,108 @@
       await setStoredJobCodes(jobCodes);
     }
 
+    // Storage helpers for the per-job "things to bring" prep list
+    async function getStoredPrepItems() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(PREPITEMS_KEY);
+          return res ? JSON.parse(res.value || '{}') : {};
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      return JSON.parse(localStorage.getItem(PREPITEMS_KEY) || '{}');
+    }
+
+    async function setStoredPrepItems(data) {
+      const serialized = JSON.stringify(data);
+      localStorage.setItem(PREPITEMS_KEY, serialized);
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(PREPITEMS_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    function getPrepItemsForJob(job) {
+      const key = normalizeJobKey(job);
+      if (!key || !prepItems[key]) return [];
+      return prepItems[key].items || [];
+    }
+
+    async function addPrepItem() {
+      const job = document.getElementById('prepListJob').value;
+      const textInput = document.getElementById('prepItemNew');
+      const text = textInput.value.trim();
+
+      if (!job.trim()) {
+        alert('Enter a job name first.');
+        return;
+      }
+      if (!text) {
+        alert('Enter an item to add.');
+        return;
+      }
+
+      const key = normalizeJobKey(job);
+      if (!prepItems[key]) {
+        prepItems[key] = { label: job.trim(), items: [] };
+      }
+      prepItems[key].items.push({ id: Date.now(), text: text, done: false });
+      await setStoredPrepItems(prepItems);
+
+      textInput.value = '';
+      renderPrepList();
+    }
+
+    async function togglePrepItem(itemId) {
+      const job = document.getElementById('prepListJob').value;
+      const key = normalizeJobKey(job);
+      if (!prepItems[key]) return;
+
+      const item = prepItems[key].items.find(i => i.id === itemId);
+      if (item) item.done = !item.done;
+      await setStoredPrepItems(prepItems);
+      renderPrepList();
+    }
+
+    async function removePrepItem(itemId) {
+      const job = document.getElementById('prepListJob').value;
+      const key = normalizeJobKey(job);
+      if (!prepItems[key]) return;
+
+      prepItems[key].items = prepItems[key].items.filter(i => i.id !== itemId);
+      await setStoredPrepItems(prepItems);
+      renderPrepList();
+    }
+
+    function renderPrepList() {
+      const job = document.getElementById('prepListJob').value;
+      const listEl = document.getElementById('prepItemList');
+      const items = getPrepItemsForJob(job);
+
+      if (!job.trim()) {
+        listEl.innerHTML = '<div class="prep-empty">Select or type a job above to see or add its prep list.</div>';
+        return;
+      }
+
+      if (items.length === 0) {
+        listEl.innerHTML = '<div class="prep-empty">Nothing on the list yet for this job.</div>';
+        return;
+      }
+
+      listEl.innerHTML = items.map(i => `
+        <div class="prep-item-row">
+          <input type="checkbox" ${i.done ? 'checked' : ''} onchange="togglePrepItem(${i.id})" />
+          <span class="prep-item-text ${i.done ? 'done' : ''}">${i.text}</span>
+          <button type="button" class="action-btn" title="Remove" onclick="removePrepItem(${i.id})">🗑️</button>
+        </div>
+      `).join('');
+    }
+
     function updateSyncStatus(text) {
       const el = document.getElementById('syncStatus');
       if (el) el.innerText = text;
@@ -1014,6 +1224,62 @@
       const jobsFromCodes = Object.values(jobCodes).map(v => v.label).filter(Boolean);
       const uniqueJobs = [...new Set([...jobsFromEntries, ...jobsFromCodes])];
       datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
+    }
+
+    // Jobs worked in the last 7 days (today + previous 6 days), most recent first
+    function getRecentJobs() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const cutoff = new Date(today);
+      cutoff.setDate(cutoff.getDate() - 6);
+
+      const latestByJob = {};
+      entries.forEach(e => {
+        if (!e.job) return;
+        const d = new Date(e.date + 'T00:00:00');
+        if (d >= cutoff) {
+          const key = normalizeJobKey(e.job);
+          if (!latestByJob[key] || d > latestByJob[key].date) {
+            latestByJob[key] = { label: e.job, date: d };
+          }
+        }
+      });
+
+      return Object.values(latestByJob).sort((a, b) => b.date - a.date).map(x => x.label);
+    }
+
+    function selectRecentJobMain(job) {
+      document.getElementById('entryJob').value = job;
+      updateCodeDatalist();
+      scheduleDraftSave();
+    }
+
+    function selectRecentJobPrep(job) {
+      document.getElementById('prepListJob').value = job;
+      renderPrepList();
+    }
+
+    function renderRecentJobs() {
+      const jobs = getRecentJobs();
+      const chipsHtml = jobs.length
+        ? jobs.map(j => `<button type="button" class="recent-job-chip" data-job="${j.replace(/"/g, '&quot;')}">${j}</button>`).join('')
+        : '<span class="recent-jobs-empty">No jobs in the last 7 days</span>';
+
+      const mainContainer = document.getElementById('recentJobsMain');
+      if (mainContainer) {
+        mainContainer.innerHTML = chipsHtml;
+        mainContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
+          btn.addEventListener('click', () => selectRecentJobMain(btn.dataset.job));
+        });
+      }
+
+      const prepContainer = document.getElementById('recentJobsPrep');
+      if (prepContainer) {
+        prepContainer.innerHTML = chipsHtml;
+        prepContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
+          btn.addEventListener('click', () => selectRecentJobPrep(btn.dataset.job));
+        });
+      }
     }
 
     // Find the code used on the most recent existing entry for this job
@@ -1100,6 +1366,7 @@
       document.getElementById('manageCodeNew').value = '';
       renderManageCodes();
       updateJobDatalist();
+      renderRecentJobs();
       updateCodeDatalist();
     }
 
@@ -1165,17 +1432,21 @@
       // Refresh views
       renderSummaries();
       updateJobDatalist();
+      renderRecentJobs();
     }
 
     async function initApp() {
       updateSyncStatus('Syncing...');
       entries = await getStoredData();
       jobCodes = await getStoredJobCodes();
+      prepItems = await getStoredPrepItems();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
       updateJobDatalist();
+      renderRecentJobs();
       updateCodeDatalist();
       renderManageCodes();
+      renderPrepList();
       renderSummaries();
       await restoreDraftIfPresent();
 
@@ -1354,6 +1625,7 @@
       resetForm();
       renderSummaries();
       updateJobDatalist();
+      renderRecentJobs();
     }
 
     function editEntry(id) {
@@ -1589,6 +1861,7 @@
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
+        renderRecentJobs();
       }
     }
 
@@ -1599,6 +1872,7 @@
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
+        renderRecentJobs();
       }
     }
 
