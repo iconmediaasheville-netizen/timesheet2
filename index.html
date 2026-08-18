@@ -591,6 +591,43 @@
       color: #94a3b8;
     }
 
+    .job-history-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #ffedd5;
+    }
+
+    .job-history-row:last-child {
+      border-bottom: none;
+    }
+
+    .job-history-date {
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #9a3412;
+      white-space: nowrap;
+      padding-top: 1px;
+    }
+
+    .job-history-details {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .job-history-desc {
+      margin-top: 3px;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    .job-history-actions {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
     @media print {
       #summaryContainer {
         display: none !important;
@@ -611,13 +648,19 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v1.7 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v1.8 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">☰</button>
     </div>
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.8</div>
+        <ul>
+          <li>Added a Job History card — pick a job (or tap a recent one) to see every entry logged for it, with edit/delete right from the list</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v1.7</div>
         <ul>
@@ -856,6 +899,19 @@
         </div>
         <button type="button" class="btn-secondary" onclick="addPrepItem()">Add</button>
       </div>
+    </div>
+
+    <!-- Job History Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">🔍 Job History</h2>
+      <div class="form-group">
+        <label>Job</label>
+        <input type="text" id="jobHistorySelect" list="existingJobsList" placeholder="Select or type job..." oninput="renderJobHistory()" />
+      </div>
+
+      <div id="recentJobsHistory" class="recent-jobs-row"></div>
+
+      <div id="jobHistoryList"></div>
     </div>
 
     <!-- Summary Section -->
@@ -1210,6 +1266,41 @@
       `).join('');
     }
 
+    // Shows every logged entry for a given job, most recent first, with edit/delete right from the list
+    function renderJobHistory() {
+      const job = document.getElementById('jobHistorySelect').value;
+      const listEl = document.getElementById('jobHistoryList');
+
+      if (!job.trim()) {
+        listEl.innerHTML = '<div class="prep-empty">Select or type a job above to see everything logged for it.</div>';
+        return;
+      }
+
+      const key = normalizeJobKey(job);
+      const jobEntries = entries
+        .filter(e => normalizeJobKey(e.job) === key)
+        .sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
+      if (jobEntries.length === 0) {
+        listEl.innerHTML = '<div class="prep-empty">No entries logged for this job yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = jobEntries.map(e => `
+        <div class="job-history-row">
+          <div class="job-history-date">${e.date}</div>
+          <div class="job-history-details">
+            <strong>${e.hours} hrs</strong>${e.totalMiles ? ` · ${e.totalMiles} mi` : ''}${e.code ? ` · <span class="code-badge">${e.code}</span>` : ''}
+            ${e.desc ? `<div class="job-history-desc">${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
+          </div>
+          <div class="job-history-actions">
+            <button type="button" class="action-btn" onclick="editEntry(${e.id})">✏️</button>
+            <button type="button" class="action-btn" onclick="deleteEntry(${e.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
     function updateSyncStatus(text) {
       const el = document.getElementById('syncStatus');
       if (el) el.innerText = text;
@@ -1259,6 +1350,11 @@
       renderPrepList();
     }
 
+    function selectRecentJobHistory(job) {
+      document.getElementById('jobHistorySelect').value = job;
+      renderJobHistory();
+    }
+
     function renderRecentJobs() {
       const jobs = getRecentJobs();
       const chipsHtml = jobs.length
@@ -1278,6 +1374,14 @@
         prepContainer.innerHTML = chipsHtml;
         prepContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
           btn.addEventListener('click', () => selectRecentJobPrep(btn.dataset.job));
+        });
+      }
+
+      const historyContainer = document.getElementById('recentJobsHistory');
+      if (historyContainer) {
+        historyContainer.innerHTML = chipsHtml;
+        historyContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
+          btn.addEventListener('click', () => selectRecentJobHistory(btn.dataset.job));
         });
       }
     }
@@ -1776,6 +1880,7 @@
       if (entries.length === 0) {
         container.innerHTML = '<p style="color: #64748b; text-align: center;">No shift entries recorded yet.</p>';
         renderPrintCalendars();
+        renderJobHistory();
         return;
       }
 
@@ -1852,6 +1957,7 @@
       });
 
       renderPrintCalendars();
+      renderJobHistory();
     }
 
     async function deleteEntry(id) {
