@@ -755,6 +755,120 @@
       margin-top: 6px;
     }
 
+    .receipt-preview {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .receipt-thumb {
+      width: 70px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .receipt-remove-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .expense-summary-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+    }
+
+    .expense-list {
+      margin-top: 8px;
+    }
+
+    .expense-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #ffedd5;
+    }
+
+    .expense-row:last-child {
+      border-bottom: none;
+    }
+
+    .expense-thumb {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .expense-thumb-placeholder {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: #cbd5e1;
+    }
+
+    .expense-details {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .expense-amount {
+      font-weight: 700;
+      color: #9a3412;
+    }
+
+    .expense-meta {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .expense-actions {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .receipt-lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 24px;
+    }
+
+    .receipt-lightbox-overlay img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+    }
+
     @media print {
       .invoice-card {
         display: none !important;
@@ -787,7 +901,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v2.4 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v2.9 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -804,6 +918,38 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.9</div>
+        <ul>
+          <li>Added a Stripe Payment Link field to Manage Job Details — save a job's Stripe link once and a "💳 Pay Now" button appears on that job's invoice, both in the preview/print and in the emailed version</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.8</div>
+        <ul>
+          <li>Added an optional Material Cost section right on the Log New Shift form — fill in an amount, category, and receipt photo while logging your hours, and it automatically creates the linked expense for that job when you hit Add Entry</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.7</div>
+        <ul>
+          <li>A receipt photo now stays attached across multiple expense entries until you remove it, so one receipt covering materials for two different jobs no longer needs to be photographed twice — just change the job/amount and add again</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.6</div>
+        <ul>
+          <li>Invoice Generator now pulls in that job's material/expense costs as a line item automatically (toggle-able), alongside labor and mileage</li>
+          <li>Added an "Email Invoice" button that opens your mail app with the full invoice pre-filled and ready to send</li>
+          <li>Expenses card now shows an all-time breakdown by category, for organizing at tax time</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v2.5</div>
+        <ul>
+          <li>Added an Expenses card — log an amount, category, and an optional job, snap a photo of the receipt, and track weekly/monthly/all-time totals. Photos are compressed automatically before saving to keep storage lean</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v2.4</div>
         <ul>
@@ -953,6 +1099,10 @@
         <label>Job Site Address</label>
         <input type="text" id="manageJobAddress" placeholder="123 Main St, City, State" onchange="saveJobInfoField('address', this.value)" />
       </div>
+      <div class="form-group">
+        <label>Stripe Payment Link</label>
+        <input type="url" id="manageJobPaymentLink" placeholder="https://buy.stripe.com/..." onchange="saveJobInfoField('paymentLink', this.value)" />
+      </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">🗑️ Recently Deleted</h3>
       <div id="trashList"></div>
@@ -1049,6 +1199,27 @@
           <textarea id="entryNotes" rows="5" placeholder="Materials used, additional job notes..."></textarea>
         </div>
 
+        <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 12px;">
+          <label>💰 Material Cost (optional — logs an expense for this job)</label>
+          <div class="row">
+            <div class="form-group" style="flex: 1;">
+              <input type="number" id="shiftMaterialCost" step="0.01" placeholder="Amount ($)" />
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <select id="shiftMaterialCategory">
+                <option value="Materials">Materials</option>
+                <option value="Tools">Tools</option>
+                <option value="Fuel">Fuel</option>
+                <option value="Parking/Tolls">Parking/Tolls</option>
+                <option value="Meals">Meals</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" style="margin-top: 6px;" />
+          <div id="shiftReceiptPreview" class="receipt-preview"></div>
+        </div>
+
         <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
         <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
       </form>
@@ -1122,6 +1293,62 @@
       <div id="jobHistoryList"></div>
     </div>
 
+    <!-- Expenses Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">💰 Expenses</h2>
+
+      <div class="row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="expenseDate" />
+        </div>
+        <div class="form-group">
+          <label>Amount ($)</label>
+          <input type="number" id="expenseAmount" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="expenseCategory">
+            <option value="Materials">Materials</option>
+            <option value="Tools">Tools</option>
+            <option value="Fuel">Fuel</option>
+            <option value="Parking/Tolls">Parking/Tolls</option>
+            <option value="Meals">Meals</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Job (optional)</label>
+          <input type="text" id="expenseJob" list="existingJobsList" placeholder="Tie to a job..." />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="expenseNote" placeholder="What was this for?" />
+      </div>
+
+      <div class="form-group">
+        <label>Receipt Photo (optional)</label>
+        <input type="file" id="expenseReceiptInput" accept="image/*" capture="environment" onchange="handleReceiptSelected(event)" />
+        <div id="expenseReceiptPreview" class="receipt-preview"></div>
+      </div>
+
+      <button type="button" class="btn-submit" onclick="addExpense()" style="background: #334155;">+ Add Expense</button>
+
+      <div id="expenseSummaryPills" class="expense-summary-pills"></div>
+      <div id="expenseCategoryBreakdown"></div>
+
+      <div class="row">
+        <button type="button" class="btn-secondary" onclick="exportExpensesCSV()">Export Expenses CSV</button>
+      </div>
+
+      <div id="expenseList" class="expense-list"></div>
+    </div>
+
     <!-- Invoice Card -->
     <div class="card invoice-card">
       <h2 style="font-size: 1.1rem; margin-bottom: 8px;" class="no-print">🧾 Invoice Generator</h2>
@@ -1150,11 +1377,19 @@
         </label>
       </div>
 
+      <div class="form-group no-print">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="invoiceIncludeExpenses" style="width: auto;" checked />
+          Include material/expense costs for this job
+        </label>
+      </div>
+
       <div class="row no-print">
         <button type="button" class="btn-secondary" onclick="generateInvoice()">Generate Invoice</button>
         <button type="button" class="btn-secondary" onclick="printInvoice()">🖨️ Print / Save as PDF</button>
       </div>
       <div class="row no-print">
+        <button type="button" class="btn-secondary" onclick="emailInvoice()">✉️ Email Invoice</button>
         <button type="button" class="btn-secondary" onclick="clearInvoice()" style="background: #f1f5f9; color: #64748b;">Clear</button>
       </div>
 
@@ -1186,11 +1421,15 @@
     const PREPITEMS_KEY = 'shiftlog_prepitems';
     const JOBINFO_KEY = 'shiftlog_jobinfo';
     const TRASH_KEY = 'shiftlog_trash';
+    const EXPENSES_KEY = 'shiftlog_expenses';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
     let jobInfo = {}; // { normalizedJobKey: { label, phone, email, address } }
     let trashedEntries = []; // deleted entries, restorable
+    let expenses = []; // [{ id, date, amount, category, job, note, receipt (compressed dataURL or null) }]
+    let pendingReceiptDataUrl = null;
+    let pendingShiftReceiptDataUrl = null;
     let wakeLock = null;
 
     // Set initial date
@@ -1469,7 +1708,7 @@
 
     function getJobInfo(job) {
       const key = normalizeJobKey(job);
-      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '' };
+      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '', paymentLink: '' };
     }
 
     async function saveJobInfoField(field, value) {
@@ -1480,7 +1719,7 @@
       }
       const key = normalizeJobKey(job);
       if (!jobInfo[key]) {
-        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '' };
+        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '' };
       }
       jobInfo[key][field] = value.trim();
       jobInfo[key].label = job.trim();
@@ -1497,9 +1736,10 @@
       document.getElementById('manageJobPhone').value = info.phone || '';
       document.getElementById('manageJobEmail').value = info.email || '';
       document.getElementById('manageJobAddress').value = info.address || '';
+      document.getElementById('manageJobPaymentLink').value = info.paymentLink || '';
     }
 
-    // Renders a compact tap-friendly block (address/phone/email) for the given job into the target container
+    // Renders a compact tap-friendly block (address/phone/email/payment link) for the given job into the target container
     function renderJobInfoBlock(containerId, job) {
       const el = document.getElementById(containerId);
       if (!el) return;
@@ -1510,7 +1750,7 @@
       }
 
       const info = getJobInfo(job);
-      if (!info.phone && !info.email && !info.address) {
+      if (!info.phone && !info.email && !info.address && !info.paymentLink) {
         el.innerHTML = '';
         return;
       }
@@ -1522,6 +1762,7 @@
         ${info.address ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="job-info-link">📍 ${info.address}</a>` : ''}
         ${info.phone ? `<a href="tel:${telHref}" class="job-info-link">📞 ${info.phone}</a>` : ''}
         ${info.email ? `<a href="mailto:${info.email}" class="job-info-link">✉️ ${info.email}</a>` : ''}
+        ${info.paymentLink ? `<a href="${info.paymentLink}" target="_blank" rel="noopener" class="job-info-link">💳 Payment link saved</a>` : ''}
       `;
     }
 
@@ -1604,6 +1845,297 @@
       trashedEntries = [];
       await setStoredTrash(trashedEntries);
       renderTrash();
+    }
+
+    // Storage helpers for expenses
+    async function getStoredExpenses() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(EXPENSES_KEY);
+          return res ? JSON.parse(res.value || '[]') : [];
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      try {
+        return JSON.parse(localStorage.getItem(EXPENSES_KEY) || '[]');
+      } catch (e) {
+        console.warn('Could not parse stored expenses', e);
+        return [];
+      }
+    }
+
+    async function setStoredExpenses(data) {
+      const serialized = JSON.stringify(data);
+      try {
+        localStorage.setItem(EXPENSES_KEY, serialized);
+      } catch (e) {
+        // Most likely a quota error from storing too many/large receipt photos
+        console.warn('localStorage set error for expenses (possibly full)', e);
+        alert('Could not save — your device storage may be full. Try removing a receipt photo from an older expense.');
+      }
+
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(EXPENSES_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    // Shrinks a photo down before storing it, so receipts don't quickly fill up device storage
+    function compressImage(file, maxDimension, quality) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Could not load image'));
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > height && width > maxDimension) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else if (height > maxDimension) {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleReceiptSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        pendingReceiptDataUrl = await compressImage(file, 1000, 0.6);
+        renderReceiptPreview();
+      } catch (err) {
+        console.warn('Could not process receipt photo', err);
+        alert('Could not process that photo — try a different one.');
+        pendingReceiptDataUrl = null;
+      }
+    }
+
+    // Shows the attached receipt with a note that it'll carry over to further expenses
+    // until removed — useful when one receipt covers materials for more than one job.
+    function renderReceiptPreview() {
+      const previewEl = document.getElementById('expenseReceiptPreview');
+      if (!pendingReceiptDataUrl) {
+        previewEl.innerHTML = '';
+        return;
+      }
+      previewEl.innerHTML = `
+        <img src="${pendingReceiptDataUrl}" class="receipt-thumb" onclick="openReceiptLightbox('${pendingReceiptDataUrl}')" />
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <span style="font-size:0.78rem; color:#64748b;">Attached — stays on for your next expense too, until you remove it. Handy for splitting one receipt across jobs.</span>
+          <button type="button" class="receipt-remove-btn" onclick="removePendingReceipt()" style="align-self:flex-start;">Remove Receipt</button>
+        </div>
+      `;
+    }
+
+    function removePendingReceipt() {
+      pendingReceiptDataUrl = null;
+      document.getElementById('expenseReceiptInput').value = '';
+      document.getElementById('expenseReceiptPreview').innerHTML = '';
+    }
+
+    // Same idea as the Expenses card's receipt handling, but for the optional Material Cost
+    // section on the Log New Shift form
+    async function handleShiftReceiptSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        pendingShiftReceiptDataUrl = await compressImage(file, 1000, 0.6);
+        renderShiftReceiptPreview();
+      } catch (err) {
+        console.warn('Could not process receipt photo', err);
+        alert('Could not process that photo — try a different one.');
+        pendingShiftReceiptDataUrl = null;
+      }
+    }
+
+    function renderShiftReceiptPreview() {
+      const previewEl = document.getElementById('shiftReceiptPreview');
+      if (!previewEl) return;
+      if (!pendingShiftReceiptDataUrl) {
+        previewEl.innerHTML = '';
+        return;
+      }
+      previewEl.innerHTML = `
+        <img src="${pendingShiftReceiptDataUrl}" class="receipt-thumb" onclick="openReceiptLightbox('${pendingShiftReceiptDataUrl}')" />
+        <button type="button" class="receipt-remove-btn" onclick="removePendingShiftReceipt()">Remove</button>
+      `;
+    }
+
+    function removePendingShiftReceipt() {
+      pendingShiftReceiptDataUrl = null;
+      const inputEl = document.getElementById('shiftReceiptInput');
+      if (inputEl) inputEl.value = '';
+      const previewEl = document.getElementById('shiftReceiptPreview');
+      if (previewEl) previewEl.innerHTML = '';
+    }
+
+    async function addExpense() {
+      const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0];
+      const amount = parseFloat(document.getElementById('expenseAmount').value);
+      const category = document.getElementById('expenseCategory').value;
+      const job = document.getElementById('expenseJob').value.trim();
+      const note = document.getElementById('expenseNote').value.trim();
+
+      if (!amount || amount <= 0) {
+        alert('Enter an amount for this expense.');
+        return;
+      }
+
+      expenses.unshift({
+        id: Date.now(),
+        date: date,
+        amount: amount,
+        category: category,
+        job: job,
+        note: note,
+        receipt: pendingReceiptDataUrl
+      });
+
+      await setStoredExpenses(expenses);
+
+      // Reset amount/job/note only — the receipt photo (if any) stays attached so you
+      // can split the same receipt across another job without re-photographing it.
+      document.getElementById('expenseAmount').value = '';
+      document.getElementById('expenseJob').value = '';
+      document.getElementById('expenseNote').value = '';
+
+      renderExpenses();
+      renderExpenseSummary();
+    }
+
+    async function deleteExpense(id) {
+      if (!confirm('Delete this expense? This cannot be undone.')) return;
+      expenses = expenses.filter(x => x.id != id);
+      await setStoredExpenses(expenses);
+      renderExpenses();
+      renderExpenseSummary();
+    }
+
+    function openReceiptLightbox(dataUrl) {
+      const overlay = document.createElement('div');
+      overlay.className = 'receipt-lightbox-overlay';
+      overlay.onclick = () => overlay.remove();
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      overlay.appendChild(img);
+      document.body.appendChild(overlay);
+    }
+
+    // Totals for this week, this month, and all time
+    function renderExpenseSummary() {
+      const pillsEl = document.getElementById('expenseSummaryPills');
+      const categoryEl = document.getElementById('expenseCategoryBreakdown');
+      if (!pillsEl) return;
+
+      if (expenses.length === 0) {
+        pillsEl.innerHTML = '';
+        if (categoryEl) categoryEl.innerHTML = '';
+        return;
+      }
+
+      const startOfWeek = document.getElementById('startOfWeek') ? document.getElementById('startOfWeek').value : '1';
+      const todayStr = new Date().toISOString().split('T')[0];
+      const currentWeekKey = getWeekKey(todayStr, startOfWeek);
+      const currentMonthKey = todayStr.slice(0, 7); // YYYY-MM
+
+      let weekTotal = 0, monthTotal = 0, allTimeTotal = 0;
+      const byCategory = {};
+      expenses.forEach(x => {
+        const amt = parseFloat(x.amount) || 0;
+        allTimeTotal += amt;
+        if (getWeekKey(x.date, startOfWeek) === currentWeekKey) weekTotal += amt;
+        if (x.date.slice(0, 7) === currentMonthKey) monthTotal += amt;
+        const cat = x.category || 'Other';
+        byCategory[cat] = (byCategory[cat] || 0) + amt;
+      });
+
+      pillsEl.innerHTML = `
+        <span class="stat-pill">This week: $${weekTotal.toFixed(2)}</span>
+        <span class="stat-pill">This month: $${monthTotal.toFixed(2)}</span>
+        <span class="stat-pill pay">All time: $${allTimeTotal.toFixed(2)}</span>
+      `;
+
+      if (categoryEl) {
+        const categoryOrder = ['Materials', 'Tools', 'Fuel', 'Parking/Tolls', 'Meals', 'Other'];
+        const rows = categoryOrder
+          .filter(cat => byCategory[cat])
+          .map(cat => `<div class="job-history-row"><div class="job-history-details">${cat}</div><div class="job-history-date">$${byCategory[cat].toFixed(2)}</div></div>`)
+          .join('');
+        categoryEl.innerHTML = `<div class="prep-empty" style="margin-bottom:2px; font-weight:600; color:#9a3412;">All-time by category (for tax organization)</div>${rows}`;
+      }
+    }
+
+    function renderExpenses() {
+      const listEl = document.getElementById('expenseList');
+      if (!listEl) return;
+
+      if (expenses.length === 0) {
+        listEl.innerHTML = '<div class="prep-empty">No expenses logged yet.</div>';
+        return;
+      }
+
+      const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
+      listEl.innerHTML = sorted.map(x => `
+        <div class="expense-row">
+          ${x.receipt
+            ? `<img src="${x.receipt}" class="expense-thumb" onclick="openReceiptLightbox('${x.receipt}')" />`
+            : `<div class="expense-thumb-placeholder">🧾</div>`}
+          <div class="expense-details">
+            <span class="expense-amount">$${parseFloat(x.amount).toFixed(2)}</span> · ${x.category}
+            <div class="expense-meta">${x.date}${x.job ? ` · ${x.job}` : ''}${x.note ? ` · ${x.note}` : ''}</div>
+          </div>
+          <div class="expense-actions">
+            <button type="button" class="action-btn" title="Delete" onclick="deleteExpense(${x.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function exportExpensesCSV() {
+      if (expenses.length === 0) {
+        alert('No expenses to export.');
+        return;
+      }
+
+      const headers = ['Date', 'Amount', 'Category', 'Job', 'Description', 'Has Receipt Photo'];
+      const rows = expenses.map(x => [
+        `"${x.date || ''}"`,
+        x.amount || 0,
+        `"${(x.category || '').replace(/"/g, '""')}"`,
+        `"${(x.job || '').replace(/"/g, '""')}"`,
+        `"${(x.note || '').replace(/"/g, '""')}"`,
+        x.receipt ? 'Yes' : 'No'
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `shiftlog_expenses_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function getPrepItemsForJob(job) {
@@ -1760,7 +2292,6 @@
       renderPrepList();
     }
 
-    // Shows every logged entry for a given job, most recent first, with edit/delete right from the list
     // Keeps the recent-job chip highlighting in sync without a full re-render (cheap, called often)
     function syncHistoryChipActiveState() {
       const container = document.getElementById('recentJobsHistory');
@@ -2077,6 +2608,7 @@
       prepItems = await getStoredPrepItems();
       jobInfo = await getStoredJobInfo();
       trashedEntries = await getStoredTrash();
+      expenses = await getStoredExpenses();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
       updateJobDatalist();
@@ -2089,6 +2621,12 @@
       renderPrepReminder();
       renderSummaries();
       await restoreDraftIfPresent();
+
+      // Default the expense date field to today, then render the expense list/summary
+      const expenseDateEl = document.getElementById('expenseDate');
+      if (expenseDateEl) expenseDateEl.value = new Date().toISOString().split('T')[0];
+      renderExpenses();
+      renderExpenseSummary();
 
       // Restore saved business name for invoices
       const businessNameEl = document.getElementById('businessName');
@@ -2304,6 +2842,24 @@
         await addJobCode(jobName, codeValue);
       }
 
+      // If a material cost was entered alongside this shift, log it as its own expense
+      // tied to the same job and date — a shortcut so you don't have to re-enter it separately.
+      const shiftMaterialCostVal = parseFloat(document.getElementById('shiftMaterialCost').value) || 0;
+      if (shiftMaterialCostVal > 0) {
+        expenses.unshift({
+          id: Date.now() + 1,
+          date: newDate,
+          amount: shiftMaterialCostVal,
+          category: document.getElementById('shiftMaterialCategory').value,
+          job: jobName,
+          note: 'Added from shift log',
+          receipt: pendingShiftReceiptDataUrl
+        });
+        await setStoredExpenses(expenses);
+        renderExpenses();
+        renderExpenseSummary();
+      }
+
       await setStoredData(entries);
       await clearStoredDraft();
       const draftBannerEl = document.getElementById('draftBanner');
@@ -2355,6 +2911,7 @@
       document.getElementById('formHeader').innerText = 'Log New Shift';
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
+      removePendingShiftReceipt();
 
       updateCodeDatalist();
       autoFillPreviousMileage();
@@ -2618,21 +3175,22 @@
       localStorage.setItem('shiftlog_business_name', value);
     }
 
-    // Builds a printable invoice for a job over a date range from its logged entries
-    function generateInvoice() {
+    // Gathers everything needed for an invoice (entries, expenses, totals) without touching the DOM,
+    // so both the on-screen preview and the emailed version build from the exact same numbers.
+    function getInvoiceData(showAlerts) {
       const job = document.getElementById('invoiceJob').value;
       const startDate = document.getElementById('invoiceStart').value;
       const endDate = document.getElementById('invoiceEnd').value;
       const includeMileage = document.getElementById('invoiceIncludeMileage').checked;
-      const resultEl = document.getElementById('invoiceResult');
+      const includeExpenses = document.getElementById('invoiceIncludeExpenses').checked;
 
       if (!job.trim()) {
-        alert('Select a job first.');
-        return;
+        if (showAlerts) alert('Select a job first.');
+        return null;
       }
       if (!startDate || !endDate) {
-        alert('Pick a start and end date.');
-        return;
+        if (showAlerts) alert('Pick a start and end date.');
+        return null;
       }
 
       const key = normalizeJobKey(job);
@@ -2643,50 +3201,102 @@
         .filter(e => normalizeJobKey(e.job) === key && e.date >= startDate && e.date <= endDate)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      if (rangeEntries.length === 0) {
-        resultEl.innerHTML = '<p class="prep-empty">No entries found for this job in that date range.</p>';
+      const rangeExpenses = expenses
+        .filter(x => normalizeJobKey(x.job) === key && x.date >= startDate && x.date <= endDate)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (rangeEntries.length === 0 && rangeExpenses.length === 0) {
+        if (showAlerts) alert('No entries or expenses found for this job in that date range.');
+        return null;
+      }
+
+      let totalHours = 0, totalMiles = 0;
+      rangeEntries.forEach(e => {
+        totalHours += parseFloat(e.hours || 0);
+        totalMiles += parseFloat(e.totalMiles || 0);
+      });
+
+      let expensesTotal = 0;
+      rangeExpenses.forEach(x => { expensesTotal += parseFloat(x.amount) || 0; });
+
+      const laborTotal = totalHours * rate;
+      const mileageTotal = totalMiles * mileageRate;
+      const grandTotal = laborTotal
+        + (includeMileage ? mileageTotal : 0)
+        + (includeExpenses ? expensesTotal : 0);
+
+      return {
+        job, startDate, endDate, rate, mileageRate,
+        includeMileage, includeExpenses,
+        rangeEntries, rangeExpenses,
+        totalHours, totalMiles, expensesTotal,
+        laborTotal, mileageTotal, grandTotal,
+        info: getJobInfo(job),
+        businessName: localStorage.getItem('shiftlog_business_name') || ''
+      };
+    }
+
+    // Builds a printable invoice for a job over a date range from its logged entries and expenses
+    function generateInvoice() {
+      const resultEl = document.getElementById('invoiceResult');
+      const data = getInvoiceData(true);
+      if (!data) {
+        resultEl.innerHTML = '';
         return;
       }
 
-      const info = getJobInfo(job);
-      const businessName = localStorage.getItem('shiftlog_business_name') || '';
-
-      let totalHours = 0, totalMiles = 0;
-      const rows = rangeEntries.map(e => {
+      const laborRows = data.rangeEntries.map(e => {
         const hrs = parseFloat(e.hours || 0);
-        totalHours += hrs;
-        totalMiles += parseFloat(e.totalMiles || 0);
-        const amount = (hrs * rate).toFixed(2);
+        const amount = (hrs * data.rate).toFixed(2);
         return `<tr>
           <td>${e.date}</td>
           <td>${(e.desc || '').replace(/\n/g, '<br/>') || '—'}</td>
           <td style="text-align:right;">${e.hours}</td>
-          <td style="text-align:right;">$${rate.toFixed(2)}</td>
+          <td style="text-align:right;">$${data.rate.toFixed(2)}</td>
           <td style="text-align:right;">$${amount}</td>
         </tr>`;
       }).join('');
 
-      const laborTotal = totalHours * rate;
-      const mileageTotal = totalMiles * mileageRate;
-      const grandTotal = laborTotal + (includeMileage ? mileageTotal : 0);
+      const expenseRowsHtml = data.includeExpenses && data.rangeExpenses.length
+        ? `
+        <div class="table-responsive" style="margin-top:12px;">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Item</th>
+                <th style="text-align:right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.rangeExpenses.map(x => `<tr>
+                <td>${x.date}</td>
+                <td>${x.category}${x.note ? ` — ${x.note}` : ''}</td>
+                <td style="text-align:right;">$${parseFloat(x.amount).toFixed(2)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`
+        : '';
 
       resultEl.innerHTML = `
         <div class="invoice-header">
           <div>
             <h2 style="margin:0;">INVOICE</h2>
-            ${businessName ? `<div>${businessName}</div>` : ''}
+            ${data.businessName ? `<div>${data.businessName}</div>` : ''}
           </div>
           <div style="text-align:right; font-size:0.85rem; color:#64748b;">
             <div>Date: ${new Date().toISOString().split('T')[0]}</div>
-            <div>Period: ${startDate} to ${endDate}</div>
+            <div>Period: ${data.startDate} to ${data.endDate}</div>
           </div>
         </div>
         <div class="invoice-bill-to">
-          <strong>Bill To:</strong> ${job}
-          ${info.address ? `<div>${info.address}</div>` : ''}
-          ${info.phone ? `<div>${info.phone}</div>` : ''}
-          ${info.email ? `<div>${info.email}</div>` : ''}
+          <strong>Bill To:</strong> ${data.job}
+          ${data.info.address ? `<div>${data.info.address}</div>` : ''}
+          ${data.info.phone ? `<div>${data.info.phone}</div>` : ''}
+          ${data.info.email ? `<div>${data.info.email}</div>` : ''}
         </div>
+        ${data.rangeEntries.length ? `
         <div class="table-responsive">
           <table class="summary-table">
             <thead>
@@ -2698,18 +3308,80 @@
                 <th style="text-align:right;">Amount</th>
               </tr>
             </thead>
-            <tbody>${rows}</tbody>
+            <tbody>${laborRows}</tbody>
           </table>
-        </div>
+        </div>` : ''}
+        ${data.includeExpenses && data.rangeExpenses.length ? `<div style="font-weight:700; color:#9a3412; font-size:0.85rem; margin-top:12px;">Materials & Expenses</div>${expenseRowsHtml}` : ''}
         <div class="invoice-totals">
-          <div>Total Hours: ${totalHours.toFixed(2)}</div>
-          <div>Labor Subtotal: $${laborTotal.toFixed(2)}</div>
-          ${includeMileage
-            ? `<div>Mileage (${totalMiles.toFixed(1)} mi @ $${mileageRate.toFixed(3)}/mi): $${mileageTotal.toFixed(2)}</div>`
-            : `<div style="color:#94a3b8;">Mileage driven: ${totalMiles.toFixed(1)} mi (not billed)</div>`}
-          <div class="invoice-grand-total">Total Due: $${grandTotal.toFixed(2)}</div>
+          ${data.rangeEntries.length ? `<div>Total Hours: ${data.totalHours.toFixed(2)}</div>` : ''}
+          ${data.rangeEntries.length ? `<div>Labor Subtotal: $${data.laborTotal.toFixed(2)}</div>` : ''}
+          ${data.includeMileage
+            ? `<div>Mileage (${data.totalMiles.toFixed(1)} mi @ $${data.mileageRate.toFixed(3)}/mi): $${data.mileageTotal.toFixed(2)}</div>`
+            : (data.totalMiles ? `<div style="color:#94a3b8;">Mileage driven: ${data.totalMiles.toFixed(1)} mi (not billed)</div>` : '')}
+          ${data.includeExpenses && data.rangeExpenses.length
+            ? `<div>Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}</div>`
+            : (data.rangeExpenses.length ? `<div style="color:#94a3b8;">Expenses logged: $${data.expensesTotal.toFixed(2)} (not billed)</div>` : '')}
+          <div class="invoice-grand-total">Total Due: $${data.grandTotal.toFixed(2)}</div>
         </div>
+        ${data.info.paymentLink ? `
+        <div style="text-align:center; margin-top:16px;">
+          <a href="${data.info.paymentLink}" target="_blank" rel="noopener" class="btn-submit" style="display:inline-block; width:auto; text-decoration:none; padding:12px 28px;">💳 Pay Now</a>
+        </div>` : ''}
       `;
+    }
+
+    // Builds a plain-text version of the invoice and opens the phone/computer's default mail app with it pre-filled
+    function emailInvoice() {
+      const data = getInvoiceData(true);
+      if (!data) return;
+
+      const lines = [];
+      lines.push(`INVOICE${data.businessName ? ' — ' + data.businessName : ''}`);
+      lines.push(`Date: ${new Date().toISOString().split('T')[0]}`);
+      lines.push(`Period: ${data.startDate} to ${data.endDate}`);
+      lines.push('');
+      lines.push(`Bill To: ${data.job}`);
+      if (data.info.address) lines.push(data.info.address);
+      if (data.info.phone) lines.push(data.info.phone);
+      if (data.info.email) lines.push(data.info.email);
+      lines.push('');
+
+      if (data.rangeEntries.length) {
+        lines.push('LABOR');
+        data.rangeEntries.forEach(e => {
+          const hrs = parseFloat(e.hours || 0);
+          const amount = (hrs * data.rate).toFixed(2);
+          lines.push(`${e.date}  ${e.desc || 'Work performed'} — ${e.hours} hrs @ $${data.rate.toFixed(2)} = $${amount}`);
+        });
+        lines.push(`Total Hours: ${data.totalHours.toFixed(2)}  |  Labor Subtotal: $${data.laborTotal.toFixed(2)}`);
+        lines.push('');
+      }
+
+      if (data.includeMileage && data.totalMiles) {
+        lines.push(`Mileage: ${data.totalMiles.toFixed(1)} mi @ $${data.mileageRate.toFixed(3)}/mi = $${data.mileageTotal.toFixed(2)}`);
+        lines.push('');
+      }
+
+      if (data.includeExpenses && data.rangeExpenses.length) {
+        lines.push('MATERIALS & EXPENSES');
+        data.rangeExpenses.forEach(x => {
+          lines.push(`${x.date}  ${x.category}${x.note ? ' — ' + x.note : ''} = $${parseFloat(x.amount).toFixed(2)}`);
+        });
+        lines.push(`Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}`);
+        lines.push('');
+      }
+
+      lines.push(`TOTAL DUE: $${data.grandTotal.toFixed(2)}`);
+      if (data.info.paymentLink) {
+        lines.push('');
+        lines.push(`Pay online: ${data.info.paymentLink}`);
+      }
+
+      const subject = `Invoice — ${data.job} (${data.startDate} to ${data.endDate})`;
+      const body = lines.join('\n');
+      const mailtoUrl = `mailto:${data.info.email ? encodeURIComponent(data.info.email) : ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      window.location.href = mailtoUrl;
     }
 
     function printInvoice() {
@@ -2728,6 +3400,7 @@
       document.getElementById('invoiceStart').value = '';
       document.getElementById('invoiceEnd').value = '';
       document.getElementById('invoiceIncludeMileage').checked = false;
+      document.getElementById('invoiceIncludeExpenses').checked = true;
       document.getElementById('invoiceResult').innerHTML = '';
     }
 
