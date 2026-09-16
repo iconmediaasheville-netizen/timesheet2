@@ -901,7 +901,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v2.9 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.1 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -918,6 +918,18 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.1</div>
+        <ul>
+          <li>Added a "Save for Later" button on the Log New Shift form — click it any time to explicitly save an unfinished entry as a draft, with a confirmation message, instead of relying on it saving silently in the background</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.0</div>
+        <ul>
+          <li>Added a Sales Tax Rate setting and a new Invoice Items card — log a specific billable item (with a price and taxable toggle), and it shows up on that job's invoice with sales tax calculated automatically, separate from receipts/expenses</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v2.9</div>
         <ul>
@@ -1059,6 +1071,10 @@
         <div class="form-group">
           <label>IRS Mileage Rate ($/mi)</label>
           <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
+        </div>
+        <div class="form-group">
+          <label>Sales Tax Rate (%)</label>
+          <input type="number" id="salesTaxRate" step="0.01" value="7" onchange="saveSalesTaxRate()" />
         </div>
       </div>
       <div class="form-group" style="margin-top: 10px;">
@@ -1220,6 +1236,9 @@
           <div id="shiftReceiptPreview" class="receipt-preview"></div>
         </div>
 
+        <button type="button" id="saveDraftBtn" class="btn-secondary" onclick="saveDraftManually()" style="width: 100%; margin-top: 6px;">💾 Save for Later (without finishing)</button>
+        <div id="draftSaveConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;">✅ Saved — come back anytime to finish this entry</div>
+
         <button type="submit" id="submitBtn" class="btn-submit">Add Entry</button>
         <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Cancel Edit</button>
       </form>
@@ -1349,6 +1368,47 @@
       <div id="expenseList" class="expense-list"></div>
     </div>
 
+    <!-- Invoice Items Card -->
+    <div class="card no-print" style="border-left: 4px solid var(--primary);">
+      <h2 style="font-size: 1.1rem; margin-bottom: 8px;">🏷️ Invoice Items</h2>
+      <div class="prep-empty" style="margin-bottom: 10px;">For billable items you're charging the client for (not costs you paid) — tax is calculated using your Sales Tax Rate in Settings.</div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="invoiceItemDate" />
+        </div>
+        <div class="form-group">
+          <label>Job</label>
+          <input type="text" id="invoiceItemJob" list="existingJobsList" placeholder="Select or type job..." />
+        </div>
+      </div>
+
+      <div id="recentJobsInvoiceItem" class="recent-jobs-row"></div>
+
+      <div class="row">
+        <div class="form-group" style="flex: 2;">
+          <label>Item / Description</label>
+          <input type="text" id="invoiceItemDesc" placeholder="e.g. Ceiling fan installed" />
+        </div>
+        <div class="form-group">
+          <label>Price ($)</label>
+          <input type="number" id="invoiceItemPrice" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="invoiceItemTaxable" style="width: auto;" checked />
+          Taxable (adds Sales Tax Rate from Settings)
+        </label>
+      </div>
+
+      <button type="button" class="btn-submit" onclick="addInvoiceItem()" style="background: #334155;">+ Add Item</button>
+
+      <div id="invoiceItemList" style="margin-top: 10px;"></div>
+    </div>
+
     <!-- Invoice Card -->
     <div class="card invoice-card">
       <h2 style="font-size: 1.1rem; margin-bottom: 8px;" class="no-print">🧾 Invoice Generator</h2>
@@ -1381,6 +1441,13 @@
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
           <input type="checkbox" id="invoiceIncludeExpenses" style="width: auto;" checked />
           Include material/expense costs for this job
+        </label>
+      </div>
+
+      <div class="form-group no-print">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="invoiceIncludeItems" style="width: auto;" checked />
+          Include billable items (with sales tax) for this job
         </label>
       </div>
 
@@ -1422,12 +1489,14 @@
     const JOBINFO_KEY = 'shiftlog_jobinfo';
     const TRASH_KEY = 'shiftlog_trash';
     const EXPENSES_KEY = 'shiftlog_expenses';
+    const INVOICEITEMS_KEY = 'shiftlog_invoiceitems';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
     let jobInfo = {}; // { normalizedJobKey: { label, phone, email, address } }
     let trashedEntries = []; // deleted entries, restorable
     let expenses = []; // [{ id, date, amount, category, job, note, receipt (compressed dataURL or null) }]
+    let invoiceItems = []; // [{ id, date, job, desc, price, taxable }]
     let pendingReceiptDataUrl = null;
     let pendingShiftReceiptDataUrl = null;
     let wakeLock = null;
@@ -1588,6 +1657,34 @@
           await setStoredDraft(data);
         }
       }, 400);
+    }
+
+    // Explicit "Save for Later" button — same underlying save as the automatic draft,
+    // just gives visible confirmation instead of relying on it happening silently
+    let draftSaveConfirmTimer = null;
+    async function saveDraftManually() {
+      const isEditing = document.getElementById('editingId').value !== '';
+      if (isEditing) {
+        alert('You\'re editing an existing saved entry — hit Update Entry to save your changes, or Cancel Edit first if you meant to start a new one.');
+        return;
+      }
+
+      const data = getFormDraftData();
+      if (isDraftEmpty(data)) {
+        alert('Nothing to save yet — fill in at least the job or hours first.');
+        return;
+      }
+
+      await setStoredDraft(data);
+
+      const confirmEl = document.getElementById('draftSaveConfirm');
+      if (confirmEl) {
+        confirmEl.style.display = 'block';
+        clearTimeout(draftSaveConfirmTimer);
+        draftSaveConfirmTimer = setTimeout(() => {
+          confirmEl.style.display = 'none';
+        }, 3000);
+      }
     }
 
     async function restoreDraftIfPresent() {
@@ -2138,6 +2235,115 @@
       document.body.removeChild(link);
     }
 
+    function saveSalesTaxRate() {
+      const value = document.getElementById('salesTaxRate').value;
+      localStorage.setItem('shiftlog_sales_tax_rate', value);
+    }
+
+    function getSalesTaxRate() {
+      return parseFloat(document.getElementById('salesTaxRate').value) || 0;
+    }
+
+    // Storage helpers for billable invoice line items (distinct from expenses — these are
+    // things you're charging the client for, not costs you paid)
+    async function getStoredInvoiceItems() {
+      if (window.storage && typeof window.storage.get === 'function') {
+        try {
+          const res = await window.storage.get(INVOICEITEMS_KEY);
+          return res ? JSON.parse(res.value || '[]') : [];
+        } catch (e) {
+          console.warn('window.storage error, falling back to localStorage', e);
+        }
+      }
+      try {
+        return JSON.parse(localStorage.getItem(INVOICEITEMS_KEY) || '[]');
+      } catch (e) {
+        console.warn('Could not parse stored invoice items', e);
+        return [];
+      }
+    }
+
+    async function setStoredInvoiceItems(data) {
+      const serialized = JSON.stringify(data);
+      try {
+        localStorage.setItem(INVOICEITEMS_KEY, serialized);
+      } catch (e) {
+        console.warn('localStorage set error for invoice items', e);
+      }
+      if (window.storage && typeof window.storage.set === 'function') {
+        try {
+          await window.storage.set(INVOICEITEMS_KEY, serialized);
+        } catch (e) {
+          console.warn('window.storage set error', e);
+        }
+      }
+    }
+
+    async function addInvoiceItem() {
+      const date = document.getElementById('invoiceItemDate').value || new Date().toISOString().split('T')[0];
+      const job = document.getElementById('invoiceItemJob').value.trim();
+      const desc = document.getElementById('invoiceItemDesc').value.trim();
+      const price = parseFloat(document.getElementById('invoiceItemPrice').value);
+      const taxable = document.getElementById('invoiceItemTaxable').checked;
+
+      if (!job) {
+        alert('Enter a job first — this item needs to be tied to a job to show up on that job\'s invoice.');
+        return;
+      }
+      if (!desc) {
+        alert('Enter a description for this item.');
+        return;
+      }
+      if (!price || price <= 0) {
+        alert('Enter a price for this item.');
+        return;
+      }
+
+      invoiceItems.unshift({ id: Date.now(), date, job, desc, price, taxable });
+      await setStoredInvoiceItems(invoiceItems);
+
+      document.getElementById('invoiceItemDesc').value = '';
+      document.getElementById('invoiceItemPrice').value = '';
+
+      renderInvoiceItems();
+    }
+
+    async function deleteInvoiceItem(id) {
+      if (!confirm('Delete this item? This cannot be undone.')) return;
+      invoiceItems = invoiceItems.filter(x => x.id != id);
+      await setStoredInvoiceItems(invoiceItems);
+      renderInvoiceItems();
+    }
+
+    function renderInvoiceItems() {
+      const listEl = document.getElementById('invoiceItemList');
+      if (!listEl) return;
+
+      if (invoiceItems.length === 0) {
+        listEl.innerHTML = '<div class="prep-empty">No billable items logged yet.</div>';
+        return;
+      }
+
+      const sorted = [...invoiceItems].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
+      listEl.innerHTML = sorted.map(x => `
+        <div class="expense-row">
+          <div class="expense-thumb-placeholder">🏷️</div>
+          <div class="expense-details">
+            <span class="expense-amount">$${parseFloat(x.price).toFixed(2)}</span> · ${x.desc}${x.taxable ? '' : ' <span style="color:#94a3b8;">(no tax)</span>'}
+            <div class="expense-meta">${x.date} · ${x.job}</div>
+          </div>
+          <div class="expense-actions">
+            <button type="button" class="action-btn" title="Delete" onclick="deleteInvoiceItem(${x.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectRecentJobInvoiceItem(job) {
+      document.getElementById('invoiceItemJob').value = job;
+    }
+
     function getPrepItemsForJob(job) {
       const key = normalizeJobKey(job);
       if (!key || !prepItems[key]) return [];
@@ -2446,6 +2652,14 @@
           btn.addEventListener('click', () => selectRecentJobInvoice(btn.dataset.job));
         });
       }
+
+      const invoiceItemContainer = document.getElementById('recentJobsInvoiceItem');
+      if (invoiceItemContainer) {
+        invoiceItemContainer.innerHTML = chipsHtml;
+        invoiceItemContainer.querySelectorAll('.recent-job-chip').forEach(btn => {
+          btn.addEventListener('click', () => selectRecentJobInvoiceItem(btn.dataset.job));
+        });
+      }
     }
 
     // Find the code used on the most recent existing entry for this job
@@ -2609,6 +2823,7 @@
       jobInfo = await getStoredJobInfo();
       trashedEntries = await getStoredTrash();
       expenses = await getStoredExpenses();
+      invoiceItems = await getStoredInvoiceItems();
       updateSyncStatus('Synced');
       autoFillPreviousMileage();
       updateJobDatalist();
@@ -2627,6 +2842,13 @@
       if (expenseDateEl) expenseDateEl.value = new Date().toISOString().split('T')[0];
       renderExpenses();
       renderExpenseSummary();
+
+      // Default the invoice item date field to today, restore saved sales tax rate, and render the item list
+      const invoiceItemDateEl = document.getElementById('invoiceItemDate');
+      if (invoiceItemDateEl) invoiceItemDateEl.value = new Date().toISOString().split('T')[0];
+      const salesTaxRateEl = document.getElementById('salesTaxRate');
+      if (salesTaxRateEl) salesTaxRateEl.value = localStorage.getItem('shiftlog_sales_tax_rate') || '7';
+      renderInvoiceItems();
 
       // Restore saved business name for invoices
       const businessNameEl = document.getElementById('businessName');
@@ -2897,6 +3119,8 @@
       document.getElementById('formHeader').innerText = 'Edit Shift Entry';
       document.getElementById('submitBtn').innerText = 'Update Entry';
       document.getElementById('cancelBtn').style.display = 'block';
+      const saveDraftBtnEl = document.getElementById('saveDraftBtn');
+      if (saveDraftBtnEl) saveDraftBtnEl.style.display = 'none';
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2911,6 +3135,10 @@
       document.getElementById('formHeader').innerText = 'Log New Shift';
       document.getElementById('submitBtn').innerText = 'Add Entry';
       document.getElementById('cancelBtn').style.display = 'none';
+      const saveDraftBtnEl = document.getElementById('saveDraftBtn');
+      if (saveDraftBtnEl) saveDraftBtnEl.style.display = 'block';
+      const draftSaveConfirmEl = document.getElementById('draftSaveConfirm');
+      if (draftSaveConfirmEl) draftSaveConfirmEl.style.display = 'none';
       removePendingShiftReceipt();
 
       updateCodeDatalist();
@@ -3183,6 +3411,7 @@
       const endDate = document.getElementById('invoiceEnd').value;
       const includeMileage = document.getElementById('invoiceIncludeMileage').checked;
       const includeExpenses = document.getElementById('invoiceIncludeExpenses').checked;
+      const includeItems = document.getElementById('invoiceIncludeItems').checked;
 
       if (!job.trim()) {
         if (showAlerts) alert('Select a job first.');
@@ -3196,6 +3425,7 @@
       const key = normalizeJobKey(job);
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
       const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const taxRate = getSalesTaxRate();
 
       const rangeEntries = entries
         .filter(e => normalizeJobKey(e.job) === key && e.date >= startDate && e.date <= endDate)
@@ -3205,8 +3435,12 @@
         .filter(x => normalizeJobKey(x.job) === key && x.date >= startDate && x.date <= endDate)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      if (rangeEntries.length === 0 && rangeExpenses.length === 0) {
-        if (showAlerts) alert('No entries or expenses found for this job in that date range.');
+      const rangeItems = invoiceItems
+        .filter(x => normalizeJobKey(x.job) === key && x.date >= startDate && x.date <= endDate)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (rangeEntries.length === 0 && rangeExpenses.length === 0 && rangeItems.length === 0) {
+        if (showAlerts) alert('No entries, expenses, or items found for this job in that date range.');
         return null;
       }
 
@@ -3219,17 +3453,28 @@
       let expensesTotal = 0;
       rangeExpenses.forEach(x => { expensesTotal += parseFloat(x.amount) || 0; });
 
+      let itemsSubtotal = 0, itemsTaxableSubtotal = 0;
+      rangeItems.forEach(x => {
+        const price = parseFloat(x.price) || 0;
+        itemsSubtotal += price;
+        if (x.taxable) itemsTaxableSubtotal += price;
+      });
+      const itemsTaxAmount = itemsTaxableSubtotal * (taxRate / 100);
+      const itemsTotalWithTax = itemsSubtotal + itemsTaxAmount;
+
       const laborTotal = totalHours * rate;
       const mileageTotal = totalMiles * mileageRate;
       const grandTotal = laborTotal
         + (includeMileage ? mileageTotal : 0)
-        + (includeExpenses ? expensesTotal : 0);
+        + (includeExpenses ? expensesTotal : 0)
+        + (includeItems ? itemsTotalWithTax : 0);
 
       return {
-        job, startDate, endDate, rate, mileageRate,
-        includeMileage, includeExpenses,
-        rangeEntries, rangeExpenses,
+        job, startDate, endDate, rate, mileageRate, taxRate,
+        includeMileage, includeExpenses, includeItems,
+        rangeEntries, rangeExpenses, rangeItems,
         totalHours, totalMiles, expensesTotal,
+        itemsSubtotal, itemsTaxableSubtotal, itemsTaxAmount, itemsTotalWithTax,
         laborTotal, mileageTotal, grandTotal,
         info: getJobInfo(job),
         businessName: localStorage.getItem('shiftlog_business_name') || ''
@@ -3279,6 +3524,28 @@
         </div>`
         : '';
 
+      const itemRowsHtml = data.includeItems && data.rangeItems.length
+        ? `
+        <div class="table-responsive" style="margin-top:12px;">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Item</th>
+                <th style="text-align:right;">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.rangeItems.map(x => `<tr>
+                <td>${x.date}</td>
+                <td>${x.desc}${x.taxable ? '' : ' <span style="color:#94a3b8;">(no tax)</span>'}</td>
+                <td style="text-align:right;">$${parseFloat(x.price).toFixed(2)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`
+        : '';
+
       resultEl.innerHTML = `
         <div class="invoice-header">
           <div>
@@ -3311,6 +3578,7 @@
             <tbody>${laborRows}</tbody>
           </table>
         </div>` : ''}
+        ${data.includeItems && data.rangeItems.length ? `<div style="font-weight:700; color:#9a3412; font-size:0.85rem; margin-top:12px;">Billable Items</div>${itemRowsHtml}` : ''}
         ${data.includeExpenses && data.rangeExpenses.length ? `<div style="font-weight:700; color:#9a3412; font-size:0.85rem; margin-top:12px;">Materials & Expenses</div>${expenseRowsHtml}` : ''}
         <div class="invoice-totals">
           ${data.rangeEntries.length ? `<div>Total Hours: ${data.totalHours.toFixed(2)}</div>` : ''}
@@ -3318,6 +3586,10 @@
           ${data.includeMileage
             ? `<div>Mileage (${data.totalMiles.toFixed(1)} mi @ $${data.mileageRate.toFixed(3)}/mi): $${data.mileageTotal.toFixed(2)}</div>`
             : (data.totalMiles ? `<div style="color:#94a3b8;">Mileage driven: ${data.totalMiles.toFixed(1)} mi (not billed)</div>` : '')}
+          ${data.includeItems && data.rangeItems.length ? `
+            <div>Items Subtotal: $${data.itemsSubtotal.toFixed(2)}</div>
+            ${data.itemsTaxAmount > 0 ? `<div>Sales Tax (${data.taxRate}% on $${data.itemsTaxableSubtotal.toFixed(2)}): $${data.itemsTaxAmount.toFixed(2)}</div>` : ''}
+          ` : ''}
           ${data.includeExpenses && data.rangeExpenses.length
             ? `<div>Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}</div>`
             : (data.rangeExpenses.length ? `<div style="color:#94a3b8;">Expenses logged: $${data.expensesTotal.toFixed(2)} (not billed)</div>` : '')}
@@ -3362,6 +3634,18 @@
         lines.push('');
       }
 
+      if (data.includeItems && data.rangeItems.length) {
+        lines.push('BILLABLE ITEMS');
+        data.rangeItems.forEach(x => {
+          lines.push(`${x.date}  ${x.desc}${x.taxable ? '' : ' (no tax)'} = $${parseFloat(x.price).toFixed(2)}`);
+        });
+        lines.push(`Items Subtotal: $${data.itemsSubtotal.toFixed(2)}`);
+        if (data.itemsTaxAmount > 0) {
+          lines.push(`Sales Tax (${data.taxRate}% on $${data.itemsTaxableSubtotal.toFixed(2)}): $${data.itemsTaxAmount.toFixed(2)}`);
+        }
+        lines.push('');
+      }
+
       if (data.includeExpenses && data.rangeExpenses.length) {
         lines.push('MATERIALS & EXPENSES');
         data.rangeExpenses.forEach(x => {
@@ -3401,6 +3685,7 @@
       document.getElementById('invoiceEnd').value = '';
       document.getElementById('invoiceIncludeMileage').checked = false;
       document.getElementById('invoiceIncludeExpenses').checked = true;
+      document.getElementById('invoiceIncludeItems').checked = true;
       document.getElementById('invoiceResult').innerHTML = '';
     }
 
