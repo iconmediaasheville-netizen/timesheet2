@@ -671,6 +671,11 @@
       text-decoration: underline;
     }
 
+    .job-info-billed {
+      color: #16a34a;
+      font-weight: 700;
+    }
+
     .prep-reminder-bar {
       display: none;
       align-items: center;
@@ -901,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.2 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.3 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -918,6 +923,12 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.3</div>
+        <ul>
+          <li>Added "Billed Through" tracking for jobs invoiced in multiple chunks — a "✅ Mark Billed Through End Date" button in the Invoice Generator records the date, shows it wherever that job's info appears, and auto-fills the next invoice's Start Date to the day right after it. Also editable directly in Manage Job Details</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.2</div>
         <ul>
@@ -1124,6 +1135,10 @@
       <div class="form-group">
         <label>Stripe Payment Link</label>
         <input type="url" id="manageJobPaymentLink" placeholder="https://buy.stripe.com/..." onchange="saveJobInfoField('paymentLink', this.value)" />
+      </div>
+      <div class="form-group">
+        <label>Billed Through (last invoiced date)</label>
+        <input type="date" id="manageJobBilledThrough" onchange="saveJobInfoField('billedThrough', this.value)" />
       </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">🗑️ Recently Deleted</h3>
@@ -1423,10 +1438,12 @@
       <h2 style="font-size: 1.1rem; margin-bottom: 8px;" class="no-print">🧾 Invoice Generator</h2>
       <div class="form-group no-print">
         <label>Job</label>
-        <input type="text" id="invoiceJob" list="existingJobsList" placeholder="Select or type job..." />
+        <input type="text" id="invoiceJob" list="existingJobsList" placeholder="Select or type job..." oninput="renderInvoiceJobInfo()" />
       </div>
 
       <div id="recentJobsInvoice" class="recent-jobs-row no-print"></div>
+
+      <div id="jobInfoInvoice" class="job-info-block no-print"></div>
 
       <div class="row no-print">
         <div class="form-group">
@@ -1468,6 +1485,9 @@
         <button type="button" class="btn-secondary" onclick="emailInvoice()">✉️ Email Invoice</button>
         <button type="button" class="btn-secondary" onclick="clearInvoice()" style="background: #f1f5f9; color: #64748b;">Clear</button>
       </div>
+
+      <button type="button" class="btn-secondary no-print" onclick="markBilledThrough()" style="width: 100%; margin-top: 8px; background: #dcfce7; color: #166534; border-color: #bbf7d0;">✅ Mark Billed Through End Date</button>
+      <div id="billedConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;"></div>
 
       <div id="invoiceResult"></div>
     </div>
@@ -1814,7 +1834,7 @@
 
     function getJobInfo(job) {
       const key = normalizeJobKey(job);
-      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '', paymentLink: '' };
+      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
     }
 
     async function saveJobInfoField(field, value) {
@@ -1825,7 +1845,7 @@
       }
       const key = normalizeJobKey(job);
       if (!jobInfo[key]) {
-        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '' };
+        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
       }
       jobInfo[key][field] = value.trim();
       jobInfo[key].label = job.trim();
@@ -1834,6 +1854,7 @@
       // Refresh anywhere this job's info is displayed
       renderJobHistory();
       renderPrepList();
+      renderInvoiceJobInfo();
     }
 
     function renderManageJobInfo() {
@@ -1843,9 +1864,10 @@
       document.getElementById('manageJobEmail').value = info.email || '';
       document.getElementById('manageJobAddress').value = info.address || '';
       document.getElementById('manageJobPaymentLink').value = info.paymentLink || '';
+      document.getElementById('manageJobBilledThrough').value = info.billedThrough || '';
     }
 
-    // Renders a compact tap-friendly block (address/phone/email/payment link) for the given job into the target container
+    // Renders a compact tap-friendly block (address/phone/email/payment link/billed-through) for the given job into the target container
     function renderJobInfoBlock(containerId, job) {
       const el = document.getElementById(containerId);
       if (!el) return;
@@ -1856,7 +1878,7 @@
       }
 
       const info = getJobInfo(job);
-      if (!info.phone && !info.email && !info.address && !info.paymentLink) {
+      if (!info.phone && !info.email && !info.address && !info.paymentLink && !info.billedThrough) {
         el.innerHTML = '';
         return;
       }
@@ -1865,12 +1887,75 @@
       const telHref = info.phone ? info.phone.replace(/[^0-9+]/g, '') : '';
 
       el.innerHTML = `
+        ${info.billedThrough ? `<span class="job-info-billed">✅ Billed through ${info.billedThrough}</span>` : ''}
         ${info.address ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="job-info-link">📍 ${info.address}</a>` : ''}
         ${info.phone ? `<a href="tel:${telHref}" class="job-info-link">📞 ${info.phone}</a>` : ''}
         ${info.email ? `<a href="mailto:${info.email}" class="job-info-link">✉️ ${info.email}</a>` : ''}
         ${info.paymentLink ? `<a href="${info.paymentLink}" target="_blank" rel="noopener" class="job-info-link">💳 Payment link saved</a>` : ''}
       `;
     }
+
+    // Refreshes the job-info block (including billed-through status) shown in the Invoice Generator,
+    // and auto-fills the invoice's Start Date to the day after the last billed-through date —
+    // only if Start Date is still empty, so it never overwrites a date you already picked.
+    function renderInvoiceJobInfo() {
+      const job = document.getElementById('invoiceJob').value;
+      renderJobInfoBlock('jobInfoInvoice', job);
+
+      const info = getJobInfo(job);
+      const startEl = document.getElementById('invoiceStart');
+      if (info.billedThrough && startEl && !startEl.value) {
+        startEl.value = addDays(info.billedThrough, 1);
+      }
+    }
+
+    // Simple date-string arithmetic helper (YYYY-MM-DD in, YYYY-MM-DD out)
+    function addDays(dateStr, days) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    // Marks a job as billed through the invoice's End Date — the point you've now invoiced up to.
+    // Handy for long jobs billed in multiple chunks: next time you generate an invoice for this job,
+    // the Start Date will auto-fill to the day right after this.
+    async function markBilledThrough() {
+      const job = document.getElementById('invoiceJob').value;
+      const endDate = document.getElementById('invoiceEnd').value;
+
+      if (!job.trim()) {
+        alert('Select a job first.');
+        return;
+      }
+      if (!endDate) {
+        alert('Pick an End Date first — that\'s the date you\'re marking as billed through.');
+        return;
+      }
+
+      const key = normalizeJobKey(job);
+      if (!jobInfo[key]) {
+        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+      }
+      jobInfo[key].billedThrough = endDate;
+      jobInfo[key].label = job.trim();
+      await setStoredJobInfo(jobInfo);
+
+      renderJobInfoBlock('jobInfoInvoice', job);
+      renderJobHistory();
+      renderPrepList();
+      renderManageJobInfo();
+
+      const confirmEl = document.getElementById('billedConfirm');
+      if (confirmEl) {
+        confirmEl.innerText = `✅ Marked billed through ${endDate} for ${job.trim()}`;
+        confirmEl.style.display = 'block';
+        clearTimeout(billedConfirmTimer);
+        billedConfirmTimer = setTimeout(() => {
+          confirmEl.style.display = 'none';
+        }, 3500);
+      }
+    }
+    let billedConfirmTimer = null;
 
     // Storage helpers for the deleted-entries trash (restore or permanently delete)
     async function getStoredTrash() {
@@ -2614,6 +2699,7 @@
 
     function selectRecentJobInvoice(job) {
       document.getElementById('invoiceJob').value = job;
+      renderInvoiceJobInfo();
     }
 
     function buildJobChipsHtml(jobs, activeJob) {
@@ -3697,6 +3783,9 @@
       document.getElementById('invoiceIncludeExpenses').checked = true;
       document.getElementById('invoiceIncludeItems').checked = true;
       document.getElementById('invoiceResult').innerHTML = '';
+      document.getElementById('jobInfoInvoice').innerHTML = '';
+      const billedConfirmEl = document.getElementById('billedConfirm');
+      if (billedConfirmEl) billedConfirmEl.style.display = 'none';
     }
 
     window.addEventListener('afterprint', () => {
