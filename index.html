@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.6 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.7 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,12 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.7</div>
+        <ul>
+          <li>Fixed a real gap: turning on sync only pushed changes made from that point forward — everything already logged on your phone before you set it up just sat there, un-synced. Now the first time you save your Turso URL/Token, everything already on the phone (every time entry and expense) gets pushed automatically. Added a "☁️ Sync All Existing Data to LedgerBox" button in the same Settings section to force this again anytime — safe to tap more than once, it won't create duplicates</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.6</div>
         <ul>
@@ -1180,6 +1186,8 @@
         <span id="syncStatusText" class="prep-empty" style="margin-bottom:0;">Not configured</span>
         <button type="button" class="btn-secondary" onclick="manualSyncNow()">Sync Now</button>
       </div>
+      <button type="button" class="btn-secondary" onclick="syncAllExistingData()" style="width: 100%; margin-top: 8px;">☁️ Sync All Existing Data to LedgerBox</button>
+      <div class="prep-empty" style="margin-top: 4px; margin-bottom: 0;">This runs automatically the first time you set up sync above. Use this button if you ever need to force everything on this phone to sync again.</div>
     </div>
 
     <!-- Entry Form -->
@@ -2775,15 +2783,59 @@
       return !!url && !!token;
     }
 
+    // The queue-based sync only ever pushes changes made from this point
+    // forward — it has no way to know about entries and expenses that were
+    // already sitting on the phone before sync was set up. This does that
+    // one-time catch-up: queues every current entry and expense (not
+    // trashed ones — those are already gone) for upload. Safe to run more
+    // than once; the upsert logic on the other end matches by ShiftLog's
+    // own id, so re-running this just re-confirms the same rows rather
+    // than duplicating them.
+    function queueAllExistingDataForSync() {
+      entries.forEach(e => enqueueSyncOp('entry_upsert', e));
+      expenses.forEach(x => enqueueSyncOp('expense_upsert', x));
+    }
+
+    const SYNC_BACKFILLED_KEY = 'shiftlog_sync_backfilled';
+
     function saveTursoConfig() {
       const url = document.getElementById('tursoUrl').value.trim();
       const token = document.getElementById('tursoToken').value.trim();
+      const wasConfigured = tursoConfigured();
       localStorage.setItem(TURSO_URL_KEY, url);
       localStorage.setItem(TURSO_TOKEN_KEY, token);
+
+      // The first time sync gets turned on, automatically push everything
+      // already on the phone, not just changes from here on.
+      const alreadyBackfilled = localStorage.getItem(SYNC_BACKFILLED_KEY) === 'true';
+      if (!wasConfigured && tursoConfigured() && !alreadyBackfilled) {
+        queueAllExistingDataForSync();
+        localStorage.setItem(SYNC_BACKFILLED_KEY, 'true');
+      }
+
       updateSyncStatusDisplay();
       if (tursoConfigured()) {
         flushSyncQueue();
       }
+    }
+
+    // Manual re-trigger for the same one-time catch-up above — handy if
+    // you want to force everything to re-sync (e.g. after restoring
+    // something from Trash), or if the automatic backfill didn't run for
+    // some reason (sync was already configured before this feature existed).
+    function syncAllExistingData() {
+      if (!tursoConfigured()) {
+        alert('Enter your Turso Database URL and Auth Token above first (the same ones used in LedgerBox).');
+        return;
+      }
+      const total = entries.length + expenses.length;
+      if (!confirm(`This will queue all ${entries.length} time entries and ${expenses.length} expenses currently on this phone to sync to LedgerBox. Continue?`)) {
+        return;
+      }
+      queueAllExistingDataForSync();
+      localStorage.setItem(SYNC_BACKFILLED_KEY, 'true');
+      flushSyncQueue();
+      alert(`Queued ${total} items — check the sync status above as they upload.`);
     }
 
     // Turso's native URL scheme (libsql://) is a WebSocket protocol; its
