@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.9 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.10 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,12 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.10</div>
+        <ul>
+          <li>Added a Business Address field in Settings, right under Your Business/Name — now shows on every invoice you print or email from your phone, matching what LedgerBox already supports on the desktop side</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.9</div>
         <ul>
@@ -1140,6 +1146,10 @@
       <div class="form-group" style="margin-top: 10px;">
         <label>Your Business / Name (shown on invoices)</label>
         <input type="text" id="businessName" placeholder="e.g. Smith Handyman Services" onchange="saveBusinessName()" />
+      </div>
+      <div class="form-group">
+        <label>Business Address (shown on invoices)</label>
+        <textarea id="businessAddress" rows="2" placeholder="e.g. 123 Main St, Weaverville, NC 28787" onchange="saveBusinessAddress()"></textarea>
       </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Job Details</h3>
@@ -3554,6 +3564,8 @@
       // Restore saved business name for invoices
       const businessNameEl = document.getElementById('businessName');
       if (businessNameEl) businessNameEl.value = localStorage.getItem('shiftlog_business_name') || '';
+      const businessAddressEl = document.getElementById('businessAddress');
+      if (businessAddressEl) businessAddressEl.value = localStorage.getItem('shiftlog_business_address') || '';
 
       // Weekly summaries collapsed by default to save scroll space; remembers your choice after that
       const savedCollapsed = localStorage.getItem('shiftlog_summary_collapsed');
@@ -4140,6 +4152,11 @@
       localStorage.setItem('shiftlog_business_name', value);
     }
 
+    function saveBusinessAddress() {
+      const value = document.getElementById('businessAddress').value.trim();
+      localStorage.setItem('shiftlog_business_address', value);
+    }
+
     // Gathers everything needed for an invoice (entries, expenses, totals) without touching the DOM,
     // so both the on-screen preview and the emailed version build from the exact same numbers.
     function getInvoiceData(showAlerts) {
@@ -4215,7 +4232,8 @@
         laborTotal, mileageTotal, grandTotal,
         info: getJobInfo(job),
         customerName: getJobInfo(job).customer || job,
-        businessName: localStorage.getItem('shiftlog_business_name') || ''
+        businessName: localStorage.getItem('shiftlog_business_name') || '',
+        businessAddress: localStorage.getItem('shiftlog_business_address') || ''
       };
     }
 
@@ -4418,6 +4436,7 @@
           <div>
             <h2 style="margin:0;">INVOICE</h2>
             ${data.businessName ? `<div>${data.businessName}</div>` : ''}
+            ${data.businessAddress ? `<div style="white-space: pre-line;">${data.businessAddress}</div>` : ''}
           </div>
           <div style="text-align:right; font-size:0.85rem; color:#64748b;">
             <div>Date: ${new Date().toISOString().split('T')[0]}</div>
@@ -4477,6 +4496,7 @@
 
       const lines = [];
       lines.push(`INVOICE${data.businessName ? ' — ' + data.businessName : ''}`);
+      if (data.businessAddress) lines.push(data.businessAddress);
       lines.push(`Date: ${new Date().toISOString().split('T')[0]}`);
       lines.push(`Period: ${data.startDate} to ${data.endDate}`);
       lines.push('');
