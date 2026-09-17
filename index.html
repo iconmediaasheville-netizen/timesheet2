@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.3 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.5 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,18 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.5</div>
+        <ul>
+          <li>Expanded expense categories (in both the Expenses card and the Material Cost section on Log New Shift) beyond job costs to cover general business expenses — Insurance, Advertising, Office Supplies, Software/Subscriptions, Legal & Professional, Rent/Lease, Repairs & Maintenance, Utilities/Phone, Bank & Interest Fees, and Taxes & Licenses. These can be logged with or without a job attached, same as before</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.4</div>
+        <ul>
+          <li>Added a Vendor field to both places you log a receipt (the Expenses card and the Material Cost section on Log New Shift) — it remembers vendors you've typed before and suggests them as you type, and vendor now shows up in the expense list, CSV export, and on invoices</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.3</div>
         <ul>
@@ -1252,9 +1264,22 @@
                 <option value="Fuel">Fuel</option>
                 <option value="Parking/Tolls">Parking/Tolls</option>
                 <option value="Meals">Meals</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Advertising">Advertising</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Software/Subscriptions">Software/Subscriptions</option>
+                <option value="Legal & Professional">Legal & Professional</option>
+                <option value="Rent/Lease">Rent/Lease</option>
+                <option value="Repairs & Maintenance">Repairs & Maintenance</option>
+                <option value="Utilities/Phone">Utilities/Phone</option>
+                <option value="Bank & Interest Fees">Bank & Interest Fees</option>
+                <option value="Taxes & Licenses">Taxes & Licenses</option>
                 <option value="Other">Other</option>
               </select>
             </div>
+          </div>
+          <div class="form-group">
+            <input type="text" id="shiftMaterialVendor" list="vendorsList" placeholder="Vendor (optional) — e.g. Home Depot" />
           </div>
           <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" style="margin-top: 6px;" />
           <div id="shiftReceiptPreview" class="receipt-preview"></div>
@@ -1360,9 +1385,27 @@
             <option value="Fuel">Fuel</option>
             <option value="Parking/Tolls">Parking/Tolls</option>
             <option value="Meals">Meals</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Advertising">Advertising</option>
+            <option value="Office Supplies">Office Supplies</option>
+            <option value="Software/Subscriptions">Software/Subscriptions</option>
+            <option value="Legal & Professional">Legal & Professional</option>
+            <option value="Rent/Lease">Rent/Lease</option>
+            <option value="Repairs & Maintenance">Repairs & Maintenance</option>
+            <option value="Utilities/Phone">Utilities/Phone</option>
+            <option value="Bank & Interest Fees">Bank & Interest Fees</option>
+            <option value="Taxes & Licenses">Taxes & Licenses</option>
             <option value="Other">Other</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Vendor (optional)</label>
+          <input type="text" id="expenseVendor" list="vendorsList" placeholder="e.g. Home Depot" />
+          <datalist id="vendorsList"></datalist>
+        </div>
+      </div>
+
+      <div class="row">
         <div class="form-group">
           <label>Job (optional)</label>
           <input type="text" id="expenseJob" list="existingJobsList" placeholder="Tie to a job..." />
@@ -2182,6 +2225,7 @@
       const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0];
       const amount = parseFloat(document.getElementById('expenseAmount').value);
       const category = document.getElementById('expenseCategory').value;
+      const vendor = document.getElementById('expenseVendor').value.trim();
       const job = document.getElementById('expenseJob').value.trim();
       const note = document.getElementById('expenseNote').value.trim();
 
@@ -2195,6 +2239,7 @@
         date: date,
         amount: amount,
         category: category,
+        vendor: vendor,
         job: job,
         note: note,
         receipt: pendingReceiptDataUrl
@@ -2202,12 +2247,13 @@
 
       await setStoredExpenses(expenses);
 
-      // Reset amount/job/note only — the receipt photo (if any) stays attached so you
-      // can split the same receipt across another job without re-photographing it.
+      // Reset amount/job/note only — the vendor and receipt photo (if any) stay filled in so
+      // multiple items from the same receipt/vendor don't need to be re-typed or re-photographed.
       document.getElementById('expenseAmount').value = '';
       document.getElementById('expenseJob').value = '';
       document.getElementById('expenseNote').value = '';
 
+      updateVendorDatalist();
       renderExpenses();
       renderExpenseSummary();
     }
@@ -2265,7 +2311,10 @@
       `;
 
       if (categoryEl) {
-        const categoryOrder = ['Materials', 'Tools', 'Fuel', 'Parking/Tolls', 'Meals', 'Other'];
+        const categoryOrder = ['Materials', 'Tools', 'Fuel', 'Parking/Tolls', 'Meals', 'Insurance',
+          'Advertising', 'Office Supplies', 'Software/Subscriptions', 'Legal & Professional',
+          'Rent/Lease', 'Repairs & Maintenance', 'Utilities/Phone', 'Bank & Interest Fees',
+          'Taxes & Licenses', 'Other'];
         const rows = categoryOrder
           .filter(cat => byCategory[cat])
           .map(cat => `<div class="job-history-row"><div class="job-history-details">${cat}</div><div class="job-history-date">$${byCategory[cat].toFixed(2)}</div></div>`)
@@ -2291,7 +2340,7 @@
             ? `<img src="${x.receipt}" class="expense-thumb" onclick="openReceiptLightbox('${x.receipt}')" />`
             : `<div class="expense-thumb-placeholder">🧾</div>`}
           <div class="expense-details">
-            <span class="expense-amount">$${parseFloat(x.amount).toFixed(2)}</span> · ${x.category}
+            <span class="expense-amount">$${parseFloat(x.amount).toFixed(2)}</span> · ${x.category}${x.vendor ? ` · ${x.vendor}` : ''}
             <div class="expense-meta">${x.date}${x.job ? ` · ${x.job}` : ''}${x.note ? ` · ${x.note}` : ''}</div>
           </div>
           <div class="expense-actions">
@@ -2307,11 +2356,12 @@
         return;
       }
 
-      const headers = ['Date', 'Amount', 'Category', 'Job', 'Description', 'Has Receipt Photo'];
+      const headers = ['Date', 'Amount', 'Category', 'Vendor', 'Job', 'Description', 'Has Receipt Photo'];
       const rows = expenses.map(x => [
         `"${x.date || ''}"`,
         x.amount || 0,
         `"${(x.category || '').replace(/"/g, '""')}"`,
+        `"${(x.vendor || '').replace(/"/g, '""')}"`,
         `"${(x.job || '').replace(/"/g, '""')}"`,
         `"${(x.note || '').replace(/"/g, '""')}"`,
         x.receipt ? 'Yes' : 'No'
@@ -2655,6 +2705,16 @@
       datalist.innerHTML = uniqueJobs.map(j => `<option value="${j}">`).join('');
     }
 
+    // Populate vendor autocomplete suggestions from every expense logged so far —
+    // no separate storage needed, just derived from vendors already typed in
+    function updateVendorDatalist() {
+      const datalist = document.getElementById('vendorsList');
+      if (!datalist) return;
+
+      const uniqueVendors = [...new Set(expenses.map(x => x.vendor).filter(Boolean))].sort();
+      datalist.innerHTML = uniqueVendors.map(v => `<option value="${v}">`).join('');
+    }
+
     // Jobs worked in the last 7 days (today + previous 6 days), most recent first
     function getRecentJobs() {
       const today = new Date();
@@ -2935,6 +2995,7 @@
       // Default the expense date field to today, then render the expense list/summary
       const expenseDateEl = document.getElementById('expenseDate');
       if (expenseDateEl) expenseDateEl.value = new Date().toISOString().split('T')[0];
+      updateVendorDatalist();
       renderExpenses();
       renderExpenseSummary();
 
@@ -3164,16 +3225,19 @@
       const shiftMaterialCostVal = parseFloat(document.getElementById('shiftMaterialCost').value) || 0;
       if (shiftMaterialCostVal > 0) {
         const shiftMaterialDescVal = document.getElementById('shiftMaterialDesc').value.trim();
+        const shiftMaterialVendorVal = document.getElementById('shiftMaterialVendor').value.trim();
         expenses.unshift({
           id: Date.now() + 1,
           date: newDate,
           amount: shiftMaterialCostVal,
           category: document.getElementById('shiftMaterialCategory').value,
+          vendor: shiftMaterialVendorVal,
           job: jobName,
           note: shiftMaterialDescVal || 'Added from shift log',
           receipt: pendingShiftReceiptDataUrl
         });
         await setStoredExpenses(expenses);
+        updateVendorDatalist();
         renderExpenses();
         renderExpenseSummary();
       }
@@ -3612,7 +3676,7 @@
             <tbody>
               ${data.rangeExpenses.map(x => `<tr>
                 <td>${x.date}</td>
-                <td>${x.category}${x.note ? ` — ${x.note}` : ''}</td>
+                <td>${x.category}${x.vendor ? ` (${x.vendor})` : ''}${x.note ? ` — ${x.note}` : ''}</td>
                 <td style="text-align:right;">$${parseFloat(x.amount).toFixed(2)}</td>
               </tr>`).join('')}
             </tbody>
@@ -3745,7 +3809,7 @@
       if (data.includeExpenses && data.rangeExpenses.length) {
         lines.push('MATERIALS & EXPENSES');
         data.rangeExpenses.forEach(x => {
-          lines.push(`${x.date}  ${x.category}${x.note ? ' — ' + x.note : ''} = $${parseFloat(x.amount).toFixed(2)}`);
+          lines.push(`${x.date}  ${x.category}${x.vendor ? ' (' + x.vendor + ')' : ''}${x.note ? ' — ' + x.note : ''} = $${parseFloat(x.amount).toFixed(2)}`);
         });
         lines.push(`Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}`);
         lines.push('');
