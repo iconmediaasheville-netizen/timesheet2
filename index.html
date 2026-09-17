@@ -760,6 +760,16 @@
       margin-top: 6px;
     }
 
+    .invoice-footer-message {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #64748b;
+      font-style: italic;
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
     .receipt-preview {
       margin-top: 8px;
       display: flex;
@@ -898,6 +908,12 @@
       }
     }
   </style>
+  <!-- For generating real PDF files client-side (no server available in a
+       single-file PWA) so an invoice can be handed to the native Share
+       sheet as an actual attachment, instead of only a plain-text email
+       or a manual print-then-save-then-attach flow. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -906,7 +922,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.13 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.14 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +939,15 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.14</div>
+        <ul>
+          <li>New "📤 Share as PDF" button on the Invoice Generator — builds a real PDF and opens your phone's share sheet with it already attached, so sending an invoice through Gmail (or anything else) is one tap instead of print, save, switch apps, and manually attach</li>
+          <li>Added "+ Add to Share Batch" for sending several invoices in one email — generate each one as usual, tap to queue it, repeat for other jobs, then "Share All" once to attach everything together</li>
+          <li>Fixed the business logo showing much larger than expected on the invoice for some logo shapes — a wide, short logo could pass through unresized</li>
+          <li>Added an Invoice Footer Message setting (defaults to a thank-you message) shown at the bottom of every invoice you print or email</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.13</div>
         <ul>
@@ -1174,6 +1199,10 @@
         <label>Business Logo (shown on invoices)</label>
         <input type="file" id="businessLogoInput" accept="image/*" onchange="handleBusinessLogoSelected(event)" />
         <div id="businessLogoPreview" class="receipt-preview"></div>
+      </div>
+      <div class="form-group">
+        <label>Invoice Footer Message (shown at the bottom of invoices)</label>
+        <textarea id="invoiceFooterMessage" rows="2" placeholder="e.g. Thank you for using Icon Media Asheville LLC. We appreciate your business."></textarea>
       </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Job Details</h3>
@@ -1613,6 +1642,21 @@
       <div class="row no-print">
         <button type="button" class="btn-secondary" onclick="emailInvoice()">✉️ Email Invoice</button>
         <button type="button" class="btn-secondary" onclick="clearInvoice()" style="background: #f1f5f9; color: #64748b;">Clear</button>
+      </div>
+
+      <button type="button" id="shareInvoiceBtn" class="btn-submit no-print" onclick="shareInvoiceAsPdf()" style="margin-top: 8px;">📤 Share as PDF</button>
+      <div class="prep-empty no-print" style="margin-top: 4px;">Generate the invoice above first, then tap this to send it as a real PDF attachment — opens your phone's share sheet (Gmail, Messages, etc.) with the file already attached.</div>
+
+      <button type="button" id="addToBatchBtn" class="btn-secondary no-print" onclick="addCurrentInvoiceToShareBatch()" style="width: 100%; margin-top: 10px;">+ Add to Share Batch</button>
+      <div class="prep-empty no-print" style="margin-top: 4px; margin-bottom: 0;">Sending several invoices in one email? Generate each one above and tap this to queue it, then Share All once when you're ready.</div>
+
+      <div id="shareBatchBar" class="no-print" style="display: none; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--primary-light);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+          <strong style="color: #9a3412; font-size: 0.85rem;"><span id="shareBatchCount">0</span> invoice(s) ready to share</strong>
+          <button type="button" class="receipt-remove-btn" onclick="clearShareBatch()">Clear</button>
+        </div>
+        <div id="shareBatchList"></div>
+        <button type="button" class="btn-submit" onclick="shareAllBatchedInvoices()" style="margin-top: 8px;">📤 Share All</button>
       </div>
 
       <button type="button" class="btn-secondary no-print" onclick="markBilledThrough()" style="width: 100%; margin-top: 8px; background: #dcfce7; color: #166534; border-color: #bbf7d0;">✅ Mark Billed Through End Date</button>
@@ -2247,6 +2291,39 @@
             canvas.height = height;
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Same idea as compressImage(), but for the business logo specifically:
+    // fits within a real maxWidth x maxHeight box (not just the larger side
+    // capped at one number) and saves as PNG rather than JPEG, so a logo
+    // with a transparent background stays transparent on a white invoice
+    // rather than getting a black or white box around it. The box here
+    // (660x180) is 3x the size the logo actually displays at on the
+    // invoice (CSS caps it to 220x60) - stored a bit larger keeps it sharp
+    // when printed, while still being a real bound in both directions
+    // rather than relying on the display CSS alone to shrink it down.
+    function compressLogoImage(file, maxWidth, maxHeight) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Could not load image'));
+          img.onload = () => {
+            let { width, height } = img;
+            const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/png'));
           };
           img.src = reader.result;
         };
@@ -3592,6 +3669,12 @@
       const businessAddressEl = document.getElementById('businessAddress');
       if (businessAddressEl) businessAddressEl.value = localStorage.getItem('shiftlog_business_address') || '';
       renderBusinessLogoPreview();
+      // Defaults to the thank-you message on first run (storedFooter === null
+      // means it's never been touched) but respects a deliberately-cleared
+      // empty value rather than re-filling it every time the app loads.
+      const storedFooter = localStorage.getItem('shiftlog_invoice_footer');
+      const footerMessageEl = document.getElementById('invoiceFooterMessage');
+      if (footerMessageEl) footerMessageEl.value = storedFooter === null ? DEFAULT_INVOICE_FOOTER : storedFooter;
 
       // Weekly summaries collapsed by default to save scroll space; remembers your choice after that
       const savedCollapsed = localStorage.getItem('shiftlog_summary_collapsed');
@@ -4183,6 +4266,13 @@
       localStorage.setItem('shiftlog_business_address', value);
     }
 
+    const DEFAULT_INVOICE_FOOTER = 'Thank you for using Icon Media Asheville LLC. We appreciate your business.';
+
+    function saveInvoiceFooterMessage() {
+      const value = document.getElementById('invoiceFooterMessage').value.trim();
+      localStorage.setItem('shiftlog_invoice_footer', value);
+    }
+
     // Business logo for the invoice header - reuses the same compressImage()
     // helper as receipt photos, since a full-resolution logo isn't needed
     // for an invoice and would just bloat localStorage.
@@ -4191,7 +4281,7 @@
       if (!file) return;
 
       try {
-        const dataUrl = await compressImage(file, 400, 0.85);
+        const dataUrl = await compressLogoImage(file, 660, 180);
         localStorage.setItem('shiftlog_business_logo', dataUrl);
         renderBusinessLogoPreview();
       } catch (err) {
@@ -4298,7 +4388,11 @@
         customerName: getJobInfo(job).customer || job,
         businessName: localStorage.getItem('shiftlog_business_name') || '',
         businessAddress: localStorage.getItem('shiftlog_business_address') || '',
-        businessLogo: localStorage.getItem('shiftlog_business_logo') || ''
+        businessLogo: localStorage.getItem('shiftlog_business_logo') || '',
+        invoiceFooter: (() => {
+          const stored = localStorage.getItem('shiftlog_invoice_footer');
+          return stored === null ? DEFAULT_INVOICE_FOOTER : stored;
+        })()
       };
     }
 
@@ -4467,15 +4561,11 @@
       }
     }
 
-    // Builds a printable invoice for a job over a date range from its logged entries and expenses
-    function generateInvoice() {
-      const resultEl = document.getElementById('invoiceResult');
-      const data = getInvoiceData(true);
-      if (!data) {
-        resultEl.innerHTML = '';
-        return;
-      }
-
+    // Builds the invoice's HTML as a pure function of its data - used both
+    // for the on-screen preview (generateInvoice()) and for PDF generation
+    // (buildInvoicePdfBlob()), so the two can never drift apart or show
+    // different totals/layout from the same underlying data.
+    function buildInvoiceHtmlString(data) {
       const laborRows = data.rangeEntries.map(e => {
         const hrs = parseFloat(e.hours || 0);
         const amount = (hrs * data.rate).toFixed(2);
@@ -4532,7 +4622,7 @@
         </div>`
         : '';
 
-      resultEl.innerHTML = `
+      return `
         <div class="invoice-header">
           <div>
             ${data.businessLogo ? `<img src="${data.businessLogo}" style="max-height:60px; max-width:220px; margin-bottom:6px; display:block;" />` : ''}
@@ -4588,7 +4678,209 @@
         <div style="text-align:center; margin-top:16px;">
           <a href="${data.info.paymentLink}" target="_blank" rel="noopener" class="btn-submit" style="display:inline-block; width:auto; text-decoration:none; padding:12px 28px;">💳 Pay Now</a>
         </div>` : ''}
+        ${data.invoiceFooter ? `<div class="invoice-footer-message">${data.invoiceFooter}</div>` : ''}
       `;
+    }
+
+    function generateInvoice() {
+      const resultEl = document.getElementById('invoiceResult');
+      const data = getInvoiceData(true);
+      if (!data) {
+        resultEl.innerHTML = '';
+        return;
+      }
+      resultEl.innerHTML = buildInvoiceHtmlString(data);
+    }
+
+    function buildInvoiceFilename(data) {
+      const safeJob = (data.job || 'Invoice').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+      return `Invoice_${safeJob}_${data.startDate}.pdf`;
+    }
+
+    // Renders the invoice to a real PDF file (a Blob), reusing the exact
+    // same HTML the on-screen preview shows, so what gets shared always
+    // matches what was just reviewed. There's no server here to generate
+    // a PDF - html2canvas renders the invoice to an image, jsPDF wraps
+    // that image in an actual PDF file.
+    async function buildInvoicePdfBlob(data) {
+      if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+        throw new Error("PDF generation isn't available right now (the required library didn't load - check your connection) - try Print / Save as PDF instead");
+      }
+
+      // Rendered off-screen so there's no visible flash of unstyled
+      // content; sized like a printed page for consistent output
+      // regardless of the phone's actual screen width.
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '700px';
+      container.style.background = '#ffffff';
+      container.style.padding = '24px';
+      container.className = 'invoice-card';
+      container.innerHTML = buildInvoiceHtmlString(data);
+      document.body.appendChild(container);
+
+      try {
+        const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/png');
+
+        if (imgHeight <= pageHeight) {
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        } else {
+          // Simple multi-page split for a longer invoice: slice the tall
+          // rendered image into page-height chunks. Not pixel-perfect if
+          // a table row straddles a page break, but keeps every page
+          // readable rather than cutting content off entirely.
+          let heightLeft = imgHeight;
+          let position = 0;
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+        }
+
+        return pdf.output('blob');
+      } finally {
+        document.body.removeChild(container);
+      }
+    }
+
+    // Shares the currently-generated invoice as a real PDF attachment via
+    // the OS's native Share sheet (Gmail, Messages, AirDrop, etc. all show
+    // up as options) - one tap instead of print, save, switch apps, and
+    // manually attach. Falls back to a clear explanation (and a nudge
+    // toward the existing Print / Save as PDF flow) on any browser/device
+    // that doesn't support sharing files, rather than failing silently.
+    async function shareInvoiceAsPdf() {
+      const data = getInvoiceData(true);
+      if (!data) return;
+
+      const shareBtn = document.getElementById('shareInvoiceBtn');
+      const originalText = shareBtn ? shareBtn.innerText : '';
+      if (shareBtn) { shareBtn.disabled = true; shareBtn.innerText = 'Preparing PDF…'; }
+
+      try {
+        const blob = await buildInvoicePdfBlob(data);
+        const filename = buildInvoiceFilename(data);
+        const file = new File([blob], filename, { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `Invoice — ${data.job}`,
+            text: `Invoice for ${data.customerName} (${data.startDate} to ${data.endDate})`
+          });
+        } else {
+          alert('Direct sharing isn\'t available on this browser/device. Use "🖨️ Print / Save as PDF" below, then attach the saved file to your email manually.');
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          // User backed out of the share sheet - not an error, nothing to do
+        } else {
+          console.warn('Could not share invoice as PDF', err);
+          alert('Could not generate or share the PDF: ' + (err && err.message ? err.message : 'unknown error') + '. Try "🖨️ Print / Save as PDF" instead.');
+        }
+      } finally {
+        if (shareBtn) { shareBtn.disabled = false; shareBtn.innerText = originalText; }
+      }
+    }
+
+    // ---- Share multiple invoices in one email ----
+    // Kept deliberately simple: build one invoice at a time exactly as
+    // before, then "+ Add to Share Batch" queues its PDF; repeat for other
+    // jobs/date ranges, then "Share All" hands every queued PDF to the
+    // Share sheet in a single call, which Gmail (and most other apps)
+    // attaches together to one new message. In-memory only (not persisted
+    // across a page reload) since this is meant for "build a few, send them
+    // right now" in one sitting, not a saved list to come back to later.
+    let shareBatchQueue = []; // [{ file, jobLabel }]
+
+    async function addCurrentInvoiceToShareBatch() {
+      const data = getInvoiceData(true);
+      if (!data) return;
+
+      const addBtn = document.getElementById('addToBatchBtn');
+      const originalText = addBtn ? addBtn.innerText : '';
+      if (addBtn) { addBtn.disabled = true; addBtn.innerText = 'Preparing…'; }
+
+      try {
+        const blob = await buildInvoicePdfBlob(data);
+        const filename = buildInvoiceFilename(data);
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        shareBatchQueue.push({ file, jobLabel: `${data.job} (${data.startDate} to ${data.endDate})` });
+        renderShareBatch();
+      } catch (err) {
+        console.warn('Could not add invoice to share batch', err);
+        alert('Could not generate the PDF for this invoice: ' + (err && err.message ? err.message : 'unknown error'));
+      } finally {
+        if (addBtn) { addBtn.disabled = false; addBtn.innerText = originalText; }
+      }
+    }
+
+    function renderShareBatch() {
+      const barEl = document.getElementById('shareBatchBar');
+      const listEl = document.getElementById('shareBatchList');
+      const countEl = document.getElementById('shareBatchCount');
+      if (!barEl || !listEl) return;
+      if (shareBatchQueue.length === 0) {
+        barEl.style.display = 'none';
+        listEl.innerHTML = '';
+        return;
+      }
+      barEl.style.display = 'block';
+      if (countEl) countEl.textContent = shareBatchQueue.length;
+      listEl.innerHTML = shareBatchQueue.map((item, i) => `
+        <div class="expense-row">
+          <div class="expense-details">${item.jobLabel}</div>
+          <div class="expense-actions">
+            <button type="button" class="action-btn" title="Remove" onclick="removeFromShareBatch(${i})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function removeFromShareBatch(index) {
+      shareBatchQueue.splice(index, 1);
+      renderShareBatch();
+    }
+
+    function clearShareBatch() {
+      shareBatchQueue = [];
+      renderShareBatch();
+    }
+
+    async function shareAllBatchedInvoices() {
+      if (shareBatchQueue.length === 0) {
+        alert('No invoices queued yet — generate an invoice above, then tap "+ Add to Share Batch".');
+        return;
+      }
+      const files = shareBatchQueue.map(item => item.file);
+      try {
+        if (navigator.canShare && navigator.canShare({ files })) {
+          await navigator.share({ files, title: `${files.length} Invoices` });
+          clearShareBatch();
+        } else {
+          alert('Direct sharing of multiple files isn\'t available on this browser/device. Try sharing them one at a time with "📤 Share as PDF" instead.');
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          // User backed out of the share sheet - not an error, keep the queue intact
+        } else {
+          console.warn('Could not share batched invoices', err);
+          alert('Could not share the invoices: ' + (err && err.message ? err.message : 'unknown error'));
+        }
+      }
     }
 
     // Builds a plain-text version of the invoice and opens the phone/computer's default mail app with it pre-filled
@@ -4650,6 +4942,10 @@
       if (data.info.paymentLink) {
         lines.push('');
         lines.push(`Pay online: ${data.info.paymentLink}`);
+      }
+      if (data.invoiceFooter) {
+        lines.push('');
+        lines.push(data.invoiceFooter);
       }
 
       const subject = `Invoice — ${data.job} (${data.startDate} to ${data.endDate})`;
