@@ -922,7 +922,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.14 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.16 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -939,6 +939,21 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.16</div>
+        <ul>
+          <li>ShiftLog and LedgerBox now share the same version number, bumped together from here on, so it's always obvious whether you're running matching versions of both</li>
+          <li>Invoices synced to LedgerBox now combine all days into one Labor line instead of a separate line per day — the day-by-day work descriptions are still preserved, just folded into that single line's description instead of splitting into a dozen billable lines for a longer job</li>
+          <li>Added a "Show Notes on the synced invoice" checkbox to the Invoice Generator — the day-by-day summary that gets built automatically is now hidden by default on the actual invoice (it's normally just for your own reference in LedgerBox), and this checkbox opts back in per invoice when needed. LedgerBox has the same checkbox on its side</li>
+          <li>Added a "Taxable" checkbox to both the Expenses card and the Material Cost section on Log New Shift — expense taxability genuinely varies (a receipt total for someone else's labor vs. a specific material bought retail), so this is decided per expense at the point you log it, syncs to LedgerBox, and now correctly carries through when that expense is included in a synced invoice. Also added to the Expenses CSV export/import</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.15</div>
+        <ul>
+          <li>"Billed Through" now shares status with LedgerBox (the desktop app) instead of being two separate, disconnected copies of the same idea — mark a job billed-through here or in LedgerBox, and the other side picks it up the next time that job is opened. Requires Cloud Sync to be set up (Settings → ☁️ Sync to LedgerBox), the same as any other synced data</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.14</div>
         <ul>
@@ -1393,6 +1408,12 @@
           <div class="form-group">
             <input type="text" id="shiftMaterialVendor" list="vendorsList" placeholder="Vendor (optional) — e.g. Home Depot" />
           </div>
+          <div class="form-group" style="margin-bottom: 6px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: normal;">
+              <input type="checkbox" id="shiftMaterialTaxable" style="width: auto;" />
+              Taxable (include this when pulled into an invoice's taxable subtotal)
+            </label>
+          </div>
           <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" style="margin-top: 6px;" />
           <div id="shiftReceiptPreview" class="receipt-preview"></div>
           <button type="button" class="btn-secondary" onclick="logMaterialCostOnly()" style="width: 100%; margin-top: 8px;">+ Log This Material Cost</button>
@@ -1538,6 +1559,13 @@
         <div id="expenseReceiptPreview" class="receipt-preview"></div>
       </div>
 
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="expenseTaxable" style="width: auto;" />
+          Taxable (include this when pulled into an invoice's taxable subtotal)
+        </label>
+      </div>
+
       <button type="button" class="btn-submit" onclick="addExpense()" style="background: #334155;">+ Add Expense</button>
 
       <div id="expenseSummaryPills" class="expense-summary-pills"></div>
@@ -1632,6 +1660,13 @@
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
           <input type="checkbox" id="invoiceIncludeItems" style="width: auto;" checked />
           Include billable items (with sales tax) for this job
+        </label>
+      </div>
+
+      <div class="form-group no-print">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="invoiceShowNotes" style="width: auto;" />
+          Show Notes on the synced invoice (the day-by-day work summary — off by default, since it's normally just for your own reference in LedgerBox)
         </label>
       </div>
 
@@ -2090,7 +2125,29 @@
     // Refreshes the job-info block (including billed-through status) shown in the Invoice Generator,
     // and auto-fills the invoice's Start Date to the day after the last billed-through date —
     // only if Start Date is still empty, so it never overwrites a date you already picked.
-    function renderInvoiceJobInfo() {
+    // Looks up this job's billed-through status directly from the shared
+    // Turso table - the one place ShiftLog reads anything back from the
+    // cloud rather than only pushing to it, since this specific value can
+    // just as easily have been set from LedgerBox on the desktop side as
+    // from this phone. Returns null (rather than throwing) on any
+    // failure - a missed refresh here should never block using the app.
+    async function fetchRemoteBilledThrough(job) {
+      if (!tursoConfigured()) return null;
+      try {
+        const result = await tursoExecute(
+          "SELECT billed_through FROM job_billing_status WHERE job = ?",
+          [job]
+        );
+        if (result.rows.length && result.rows[0].billed_through) {
+          return result.rows[0].billed_through;
+        }
+      } catch (e) {
+        console.warn('Could not check remote billed-through status', e);
+      }
+      return null;
+    }
+
+    async function renderInvoiceJobInfo() {
       const job = document.getElementById('invoiceJob').value;
       renderJobInfoBlock('jobInfoInvoice', job);
 
@@ -2098,6 +2155,29 @@
       const startEl = document.getElementById('invoiceStart');
       if (info.billedThrough && startEl && !startEl.value) {
         startEl.value = addDays(info.billedThrough, 1);
+      }
+
+      // Check whether LedgerBox (or another device) has moved this job's
+      // billed-through status on since this phone last knew about it -
+      // e.g. an invoice marked billed-through on the desktop between
+      // visits to this screen. Runs after the locally-known value has
+      // already been applied above, so the screen is never left blank
+      // while this (necessarily slower, network-dependent) check runs.
+      if (job && job.trim()) {
+        const remoteValue = await fetchRemoteBilledThrough(job.trim());
+        if (remoteValue && remoteValue !== info.billedThrough) {
+          const key = normalizeJobKey(job);
+          if (!jobInfo[key]) {
+            jobInfo[key] = { label: job.trim(), customer: '', phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+          }
+          jobInfo[key].billedThrough = remoteValue;
+          jobInfo[key].label = job.trim();
+          await setStoredJobInfo(jobInfo);
+          renderJobInfoBlock('jobInfoInvoice', job);
+          if (startEl && !startEl.value) {
+            startEl.value = addDays(remoteValue, 1);
+          }
+        }
       }
     }
 
@@ -2131,6 +2211,11 @@
       jobInfo[key].billedThrough = endDate;
       jobInfo[key].label = job.trim();
       await setStoredJobInfo(jobInfo);
+      // Shares this with LedgerBox (and any other device) too, so marking
+      // it here isn't only visible on this phone - see the job_billing_upsert
+      // handler in applySyncOp for the other side of this.
+      enqueueSyncOp('job_billing_upsert', { job: job.trim(), billedThrough: endDate });
+      flushSyncQueue();
 
       renderJobInfoBlock('jobInfoInvoice', job);
       renderJobHistory();
@@ -2430,6 +2515,7 @@
       const description = document.getElementById('shiftMaterialDesc').value.trim();
       const category = document.getElementById('shiftMaterialCategory').value;
       const vendor = document.getElementById('shiftMaterialVendor').value.trim();
+      const taxable = document.getElementById('shiftMaterialTaxable').checked;
 
       const materialExpense = {
         id: Date.now(),
@@ -2439,6 +2525,7 @@
         vendor: vendor,
         job: job,
         note: description || 'Added from shift log',
+        taxable: taxable,
         receipt: pendingShiftReceiptDataUrl
       };
       expenses.unshift(materialExpense);
@@ -2456,6 +2543,7 @@
       document.getElementById('shiftMaterialCost').value = '';
       document.getElementById('shiftMaterialDesc').value = '';
       document.getElementById('shiftMaterialCategory').value = 'Materials';
+      document.getElementById('shiftMaterialTaxable').checked = false;
       removePendingShiftReceipt();
       // Vendor stays filled in, same convenience as the standalone Expenses card,
       // in case the next material cost is from the same vendor.
@@ -2475,6 +2563,7 @@
       const vendor = document.getElementById('expenseVendor').value.trim();
       const job = document.getElementById('expenseJob').value.trim();
       const note = document.getElementById('expenseNote').value.trim();
+      const taxable = document.getElementById('expenseTaxable').checked;
 
       if (!amount || amount <= 0) {
         alert('Enter an amount for this expense.');
@@ -2489,6 +2578,7 @@
         vendor: vendor,
         job: job,
         note: note,
+        taxable: taxable,
         receipt: pendingReceiptDataUrl
       };
       expenses.unshift(newExpense);
@@ -2497,11 +2587,14 @@
       enqueueSyncOp('expense_upsert', newExpense);
       flushSyncQueue();
 
-      // Reset amount/job/note only — the vendor and receipt photo (if any) stay filled in so
-      // multiple items from the same receipt/vendor don't need to be re-typed or re-photographed.
+      // Reset amount/job/note/taxable — the vendor and receipt photo (if
+      // any) stay filled in so multiple items from the same receipt/vendor
+      // don't need to be re-typed or re-photographed, but taxability
+      // genuinely varies per item, so it's not assumed to carry over.
       document.getElementById('expenseAmount').value = '';
       document.getElementById('expenseJob').value = '';
       document.getElementById('expenseNote').value = '';
+      document.getElementById('expenseTaxable').checked = false;
 
       updateVendorDatalist();
       renderExpenses();
@@ -2608,7 +2701,7 @@
         return;
       }
 
-      const headers = ['Date', 'Amount', 'Category', 'Vendor', 'Job', 'Description', 'Has Receipt Photo'];
+      const headers = ['Date', 'Amount', 'Category', 'Vendor', 'Job', 'Description', 'Taxable', 'Has Receipt Photo'];
       const rows = expenses.map(x => [
         `"${x.date || ''}"`,
         x.amount || 0,
@@ -2616,6 +2709,7 @@
         `"${(x.vendor || '').replace(/"/g, '""')}"`,
         `"${(x.job || '').replace(/"/g, '""')}"`,
         `"${(x.note || '').replace(/"/g, '""')}"`,
+        x.taxable ? 'Yes' : 'No',
         x.receipt ? 'Yes' : 'No'
       ]);
 
@@ -3161,15 +3255,15 @@
         );
         if (existing.rows.length) {
           await tursoExecute(
-            `UPDATE expenses SET date=?, amount=?, category=?, vendor=?, job=?, description=?, updated_at=?
+            `UPDATE expenses SET date=?, amount=?, category=?, vendor=?, job=?, description=?, taxable=?, updated_at=?
              WHERE external_id=? AND source='shiftlog_sync'`,
-            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', nowIso, String(e.id)]
+            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', e.taxable ? 1 : 0, nowIso, String(e.id)]
           );
         } else {
           await tursoExecute(
-            `INSERT INTO expenses (date, amount, category, vendor, job, description, source, external_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'shiftlog_sync', ?, ?, ?)`,
-            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', String(e.id), nowIso, nowIso]
+            `INSERT INTO expenses (date, amount, category, vendor, job, description, taxable, source, external_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'shiftlog_sync', ?, ?, ?)`,
+            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', e.taxable ? 1 : 0, String(e.id), nowIso, nowIso]
           );
         }
         return;
@@ -3252,12 +3346,13 @@
 
         let invoiceId;
         const notesToSave = inv.notes || 'Synced from ShiftLog';
+        const showNotesToSave = inv.showNotes ? 1 : 0;
         if (existingInvoice.rows.length) {
           invoiceId = existingInvoice.rows[0].id;
           await tursoExecute(
-            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, notes=?, updated_at=?
+            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, notes=?, show_notes=?, updated_at=?
              WHERE id=?`,
-            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, nowIso, invoiceId]
+            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, showNotesToSave, nowIso, invoiceId]
           );
           await tursoExecute("DELETE FROM invoice_line_items WHERE invoice_id = ?", [invoiceId]);
         } else {
@@ -3276,10 +3371,10 @@
 
           const created = await tursoExecute(
             `INSERT INTO invoices (invoice_number, customer_id, job, date_created, period_start, period_end, status,
-             subtotal, tax_rate, tax_amount, total, currency, notes, source, external_id, show_rate_details, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', ?, 'shiftlog_sync', ?, 0, ?, ?)`,
+             subtotal, tax_rate, tax_amount, total, currency, notes, show_notes, source, external_id, show_rate_details, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', ?, ?, 'shiftlog_sync', ?, 0, ?, ?)`,
             [invoiceNumber, customerId, inv.job, nowIso.split('T')[0], inv.startDate, inv.endDate,
-             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, String(inv.id), nowIso, nowIso]
+             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, showNotesToSave, String(inv.id), nowIso, nowIso]
           );
           invoiceId = created.lastInsertRowid;
         }
@@ -3291,6 +3386,32 @@
             [invoiceId, line.description, line.quantity, line.rate, line.amount, line.taxable ? 1 : 0, sortOrder]
           );
           sortOrder++;
+        }
+        return;
+      }
+
+      if (op.kind === 'job_billing_upsert') {
+        // Shares LedgerBox's own job_billing_status table (job name is
+        // the only key both apps can agree on - LedgerBox has a numeric
+        // customer id ShiftLog has no concept of, and ShiftLog has no
+        // numeric ids of its own at all) so marking a job billed-through
+        // on the phone shows up in LedgerBox, and vice versa, rather than
+        // being two separate, disconnected copies of the same idea.
+        const { job, billedThrough } = op.payload;
+        const existing = await tursoExecute(
+          "SELECT id FROM job_billing_status WHERE job = ?",
+          [job]
+        );
+        if (existing.rows.length) {
+          await tursoExecute(
+            "UPDATE job_billing_status SET billed_through=?, updated_at=? WHERE job=?",
+            [billedThrough, nowIso, job]
+          );
+        } else {
+          await tursoExecute(
+            "INSERT INTO job_billing_status (job, billed_through, updated_at) VALUES (?, ?, ?)",
+            [job, billedThrough, nowIso]
+          );
         }
         return;
       }
@@ -3915,6 +4036,7 @@
       if (shiftMaterialCostVal > 0) {
         const shiftMaterialDescVal = document.getElementById('shiftMaterialDesc').value.trim();
         const shiftMaterialVendorVal = document.getElementById('shiftMaterialVendor').value.trim();
+        const shiftMaterialTaxableVal = document.getElementById('shiftMaterialTaxable').checked;
         const materialExpense = {
           id: Date.now() + 1,
           date: newDate,
@@ -3923,6 +4045,7 @@
           vendor: shiftMaterialVendorVal,
           job: jobName,
           note: shiftMaterialDescVal || 'Added from shift log',
+          taxable: shiftMaterialTaxableVal,
           receipt: pendingShiftReceiptDataUrl
         };
         expenses.unshift(materialExpense);
@@ -4432,40 +4555,32 @@
 
     // Builds line items matching exactly what ShiftLog's own invoice preview
     // ("Generate Invoice"/"Email Invoice") already computes and shows: tax
-    // only ever applies to Invoice Items, never to labor, mileage, or
-    // expenses. This deliberately does NOT match LedgerBox's own separate
-    // "Pull Time & Expenses" feature, which does tax labor — that's a
-    // different LedgerBox-native workflow with its own tax assumption. What
-    // matters here is that the total the user already saw and reviewed on
-    // their phone is the same total that shows up once it's opened in
-    // LedgerBox (which recalculates tax live from each line's taxable flag
-    // the moment the invoice is opened) — not silently different.
+    // only ever applies to expenses/materials explicitly marked Taxable
+    // and to Invoice Items - never to labor or mileage, which aren't
+    // billable goods. What matters here is that the total the user
+    // already saw and reviewed on their phone is the same total that
+    // shows up once it's opened in LedgerBox (which recalculates tax
+    // live from each line's taxable flag the moment the invoice is
+    // opened) — not silently different.
     function buildInvoiceLineItemsForSync(data) {
       const lines = [];
       if (data.rangeEntries.length > 0) {
         const anyDescribed = data.rangeEntries.some(e => e.desc && e.desc.trim());
-        if (anyDescribed) {
-          // At least one day has a real Work Description - break labor out
-          // day by day so what was actually done shows directly on its own
-          // line, the same way ShiftLog's own invoice preview already lists
-          // labor, instead of losing that detail into one combined summary
-          // line. Every day in the range becomes its own line (not just the
-          // described ones) so the hours aren't double-counted against a
-          // leftover aggregate line.
-          data.rangeEntries.forEach(e => {
-            const hours = parseFloat(e.hours) || 0;
-            const amount = hours * data.rate;
-            const label = e.desc && e.desc.trim()
-              ? `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}`
-              : `${e.date}: Labor`;
-            lines.push({ description: label, quantity: hours, rate: data.rate, amount: amount, taxable: false });
-          });
-        } else {
-          lines.push({
-            description: `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`,
-            quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: false
-          });
-        }
+        // Always one combined Labor line for the whole period, regardless
+        // of how many days it covers - each day's own Work Description
+        // (when there is one) is folded into that single line's
+        // description instead of splitting into a separate billable line
+        // per day, so a two-week job doesn't turn into a dozen line items.
+        const label = anyDescribed
+          ? data.rangeEntries
+              .map(e => e.desc && e.desc.trim() ? `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}` : null)
+              .filter(Boolean)
+              .join(' | ')
+          : `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`;
+        lines.push({
+          description: label, quantity: data.totalHours, rate: data.rate,
+          amount: data.laborTotal, taxable: false
+        });
       }
       if (data.includeMileage && data.totalMiles > 0) {
         lines.push({
@@ -4478,7 +4593,7 @@
           let label = x.category;
           if (x.vendor) label += ` (${x.vendor})`;
           if (x.note) label += ` — ${x.note}`;
-          lines.push({ description: label, quantity: 1, rate: parseFloat(x.amount), amount: parseFloat(x.amount), taxable: false });
+          lines.push({ description: label, quantity: 1, rate: parseFloat(x.amount), amount: parseFloat(x.amount), taxable: !!x.taxable });
         });
       }
       if (data.includeItems) {
@@ -4536,6 +4651,7 @@
       }
       const totals = computeInvoiceSyncTotals(data);
       const notes = buildSyncNotes(data);
+      const showNotes = document.getElementById('invoiceShowNotes').checked;
 
       enqueueSyncOp('invoice_upsert', {
         id: invoiceId,
@@ -4548,6 +4664,7 @@
         taxAmount: totals.taxAmount,
         total: totals.total,
         notes: notes,
+        showNotes: showNotes,
         lineItems: lineItems,
         customerInfo: { email: data.info.email, phone: data.info.phone, address: data.info.address }
       });
@@ -4974,6 +5091,7 @@
       document.getElementById('invoiceIncludeMileage').checked = false;
       document.getElementById('invoiceIncludeExpenses').checked = true;
       document.getElementById('invoiceIncludeItems').checked = true;
+      document.getElementById('invoiceShowNotes').checked = false;
       document.getElementById('invoiceResult').innerHTML = '';
       document.getElementById('jobInfoInvoice').innerHTML = '';
       const billedConfirmEl = document.getElementById('billedConfirm');
