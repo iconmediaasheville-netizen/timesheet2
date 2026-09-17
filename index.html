@@ -4095,17 +4095,22 @@
       return newRecord.id;
     }
 
-    // Builds the same shape of line items LedgerBox's own "Pull Time &
-    // Expenses" feature would build for this job/period, so an invoice made
-    // on the phone and one made directly in LedgerBox look consistent:
-    // labor is taxable, mileage and expenses are not, and billable items
-    // carry whichever taxable flag was set on them.
+    // Builds line items matching exactly what ShiftLog's own invoice preview
+    // ("Generate Invoice"/"Email Invoice") already computes and shows: tax
+    // only ever applies to Invoice Items, never to labor, mileage, or
+    // expenses. This deliberately does NOT match LedgerBox's own separate
+    // "Pull Time & Expenses" feature, which does tax labor — that's a
+    // different LedgerBox-native workflow with its own tax assumption. What
+    // matters here is that the total the user already saw and reviewed on
+    // their phone is the same total that shows up once it's opened in
+    // LedgerBox (which recalculates tax live from each line's taxable flag
+    // the moment the invoice is opened) — not silently different.
     function buildInvoiceLineItemsForSync(data) {
       const lines = [];
       if (data.rangeEntries.length > 0) {
         lines.push({
           description: `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`,
-          quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: true
+          quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: false
         });
       }
       if (data.includeMileage && data.totalMiles > 0) {
