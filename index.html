@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.5 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.6 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,13 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.6</div>
+        <ul>
+          <li>Added automatic sync to LedgerBox (Settings → ☁️ Sync to LedgerBox) — enter the same Turso Database URL and Auth Token used in the desktop app, and your time entries and expenses stay in sync automatically, without exporting/importing CSVs by hand. ShiftLog still works fully offline exactly as before; anything added while offline just syncs the next time there's a connection, shown as "⏳ N pending" until it does</li>
+          <li>Added "☁️ Save & Sync Invoice to LedgerBox" in the Invoice Generator — creates a real invoice in LedgerBox (as a draft, ready to review or attach a payment link to) from the same job/period/line items you're already previewing. Saving the same job and date range again updates that invoice instead of creating a duplicate</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.5</div>
         <ul>
@@ -1156,6 +1163,23 @@
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">🗑️ Recently Deleted</h3>
       <div id="trashList"></div>
       <button type="button" class="btn-secondary" onclick="emptyTrash()" style="margin-top: 6px;">Empty Trash</button>
+
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">☁️ Sync to LedgerBox</h3>
+      <div class="prep-empty" style="margin-bottom: 8px;">
+        Keeps your time, mileage, and expense entries in sync with the LedgerBox desktop app automatically — no more exporting/importing CSVs by hand. ShiftLog still works fully offline; anything added while offline just syncs the next time you have a connection. Receipt photos stay on your phone and are not synced.
+      </div>
+      <div class="form-group">
+        <label>Turso Database URL</label>
+        <input type="text" id="tursoUrl" placeholder="libsql://your-db-name-yourorg.turso.io" onchange="saveTursoConfig()" />
+      </div>
+      <div class="form-group">
+        <label>Turso Auth Token</label>
+        <input type="password" id="tursoToken" placeholder="Paste the same token used in LedgerBox" onchange="saveTursoConfig()" />
+      </div>
+      <div id="syncStatusRow" style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
+        <span id="syncStatusText" class="prep-empty" style="margin-bottom:0;">Not configured</span>
+        <button type="button" class="btn-secondary" onclick="manualSyncNow()">Sync Now</button>
+      </div>
     </div>
 
     <!-- Entry Form -->
@@ -1532,6 +1556,9 @@
       <button type="button" class="btn-secondary no-print" onclick="markBilledThrough()" style="width: 100%; margin-top: 8px; background: #dcfce7; color: #166534; border-color: #bbf7d0;">✅ Mark Billed Through End Date</button>
       <div id="billedConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;"></div>
 
+      <button type="button" class="btn-secondary no-print" onclick="saveAndSyncInvoice()" style="width: 100%; margin-top: 8px; background: var(--primary-light); color: #9a3412; border-color: var(--border); font-weight: 700;">☁️ Save &amp; Sync Invoice to LedgerBox</button>
+      <div id="invoiceSyncConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;"></div>
+
       <div id="invoiceResult"></div>
     </div>
 
@@ -1562,6 +1589,9 @@
     const TRASH_KEY = 'shiftlog_trash';
     const EXPENSES_KEY = 'shiftlog_expenses';
     const INVOICEITEMS_KEY = 'shiftlog_invoiceitems';
+    const TURSO_URL_KEY = 'shiftlog_turso_url';
+    const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
+    const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
@@ -2059,6 +2089,8 @@
 
       await setStoredData(entries);
       await setStoredTrash(trashedEntries);
+      enqueueSyncOp('entry_upsert', restored);
+      flushSyncQueue();
 
       renderSummaries();
       updateJobDatalist();
@@ -2234,7 +2266,7 @@
         return;
       }
 
-      expenses.unshift({
+      const newExpense = {
         id: Date.now(),
         date: date,
         amount: amount,
@@ -2243,9 +2275,12 @@
         job: job,
         note: note,
         receipt: pendingReceiptDataUrl
-      });
+      };
+      expenses.unshift(newExpense);
 
       await setStoredExpenses(expenses);
+      enqueueSyncOp('expense_upsert', newExpense);
+      flushSyncQueue();
 
       // Reset amount/job/note only — the vendor and receipt photo (if any) stay filled in so
       // multiple items from the same receipt/vendor don't need to be re-typed or re-photographed.
@@ -2262,6 +2297,8 @@
       if (!confirm('Delete this expense? This cannot be undone.')) return;
       expenses = expenses.filter(x => x.id != id);
       await setStoredExpenses(expenses);
+      enqueueSyncOp('expense_delete', { id });
+      flushSyncQueue();
       renderExpenses();
       renderExpenseSummary();
     }
@@ -2715,6 +2752,358 @@
       datalist.innerHTML = uniqueVendors.map(v => `<option value="${v}">`).join('');
     }
 
+    // ==================== Sync to LedgerBox (Turso) ====================
+    // ShiftLog keeps localStorage as its source of truth and keeps working
+    // fully offline, same as always. Every local add/edit/delete of a time
+    // entry or expense also enqueues a small sync operation describing what
+    // changed. Whenever online (checked on a timer, the browser's 'online'
+    // event, and on app load), the queue is flushed to the same Turso
+    // database LedgerBox reads from — one HTTP call per queued operation,
+    // stopping at the first failure so a flaky connection can't reorder
+    // operations for the same entry. If Turso isn't configured, none of
+    // this runs and ShiftLog behaves exactly as it always has.
+
+    function getTursoConfig() {
+      return {
+        url: (localStorage.getItem(TURSO_URL_KEY) || '').trim(),
+        token: (localStorage.getItem(TURSO_TOKEN_KEY) || '').trim()
+      };
+    }
+
+    function tursoConfigured() {
+      const { url, token } = getTursoConfig();
+      return !!url && !!token;
+    }
+
+    function saveTursoConfig() {
+      const url = document.getElementById('tursoUrl').value.trim();
+      const token = document.getElementById('tursoToken').value.trim();
+      localStorage.setItem(TURSO_URL_KEY, url);
+      localStorage.setItem(TURSO_TOKEN_KEY, token);
+      updateSyncStatusDisplay();
+      if (tursoConfigured()) {
+        flushSyncQueue();
+      }
+    }
+
+    // Turso's native URL scheme (libsql://) is a WebSocket protocol; its
+    // HTTP REST API (what a plain fetch() call can use, no library needed)
+    // is served on the same host under https://. This lets you paste the
+    // exact same URL Turso's dashboard gives you — the same one already
+    // entered in LedgerBox — without having to know or care about the
+    // distinction.
+    function tursoHttpBase(url) {
+      return url.replace(/^libsql:\/\//, 'https://').replace(/\/+$/, '');
+    }
+
+    // Encodes a JS value into Turso's wire format (the "Hrana" protocol).
+    // Integers are sent as strings (not JSON numbers) so 64-bit SQLite
+    // integers survive the trip without floating-point rounding.
+    function encodeTursoValue(v) {
+      if (v === null || v === undefined) return { type: 'null' };
+      if (typeof v === 'string') return { type: 'text', value: v };
+      if (typeof v === 'number') {
+        if (Number.isInteger(v)) return { type: 'integer', value: String(v) };
+        return { type: 'float', value: v };
+      }
+      if (typeof v === 'boolean') return { type: 'integer', value: v ? '1' : '0' };
+      return { type: 'text', value: String(v) };
+    }
+
+    function decodeTursoValue(v) {
+      switch (v.type) {
+        case 'null': return null;
+        case 'text': return v.value;
+        case 'integer': return parseInt(v.value, 10);
+        case 'float': return v.value;
+        default: return null;
+      }
+    }
+
+    // Runs one SQL statement against Turso over plain HTTP and returns rows
+    // as plain objects keyed by column name.
+    async function tursoExecute(sql, args) {
+      const { url, token } = getTursoConfig();
+      if (!url || !token) throw new Error('Turso sync is not configured');
+
+      const resp = await fetch(`${tursoHttpBase(url)}/v1/execute`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          stmt: {
+            sql: sql,
+            args: (args || []).map(encodeTursoValue),
+            named_args: [],
+            want_rows: true
+          }
+        })
+      });
+
+      if (!resp.ok) {
+        let message = `Turso returned HTTP ${resp.status}`;
+        try {
+          const errBody = await resp.json();
+          if (errBody.message) message = errBody.message;
+        } catch (e) { /* ignore - use the generic message above */ }
+        throw new Error(message);
+      }
+
+      const body = await resp.json();
+      const result = body.result;
+      const columns = result.cols.map(c => c.name);
+      const rows = result.rows.map(row => {
+        const obj = {};
+        row.forEach((val, i) => { obj[columns[i]] = decodeTursoValue(val); });
+        return obj;
+      });
+      return {
+        rows,
+        lastInsertRowid: result.last_insert_rowid ? parseInt(result.last_insert_rowid, 10) : null,
+        rowsAffected: result.affected_row_count || 0
+      };
+    }
+
+    function getSyncQueue() {
+      try {
+        return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function setSyncQueue(queue) {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    }
+
+    function enqueueSyncOp(kind, payload) {
+      if (!tursoConfigured()) return; // sync isn't set up - nothing to queue
+      const queue = getSyncQueue();
+      queue.push({ kind, payload, queuedAt: new Date().toISOString() });
+      setSyncQueue(queue);
+      updateSyncStatusDisplay();
+    }
+
+    // Applies one queued operation against Turso. Matches against the exact
+    // same "expenses" / "time_entries" tables LedgerBox's own database uses,
+    // tagging rows with source='shiftlog_sync' and external_id=<ShiftLog's
+    // own entry id> so an edit or delete can reliably find the right row
+    // again later, independent of whatever field values changed since.
+    async function applySyncOp(op) {
+      const nowIso = new Date().toISOString();
+
+      if (op.kind === 'expense_upsert') {
+        const e = op.payload;
+        const existing = await tursoExecute(
+          "SELECT id FROM expenses WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [String(e.id)]
+        );
+        if (existing.rows.length) {
+          await tursoExecute(
+            `UPDATE expenses SET date=?, amount=?, category=?, vendor=?, job=?, description=?, updated_at=?
+             WHERE external_id=? AND source='shiftlog_sync'`,
+            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', nowIso, String(e.id)]
+          );
+        } else {
+          await tursoExecute(
+            `INSERT INTO expenses (date, amount, category, vendor, job, description, source, external_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'shiftlog_sync', ?, ?, ?)`,
+            [e.date, e.amount, e.category, e.vendor || '', e.job || '', e.note || '', String(e.id), nowIso, nowIso]
+          );
+        }
+        return;
+      }
+
+      if (op.kind === 'expense_delete') {
+        await tursoExecute(
+          "DELETE FROM expenses WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [String(op.payload.id)]
+        );
+        return;
+      }
+
+      if (op.kind === 'entry_upsert') {
+        const e = op.payload;
+        const existing = await tursoExecute(
+          "SELECT id FROM time_entries WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [String(e.id)]
+        );
+        if (existing.rows.length) {
+          await tursoExecute(
+            `UPDATE time_entries SET date=?, job=?, code=?, hours=?, time_in=?, time_out=?, break_mins=?,
+             start_miles=?, end_miles=?, total_miles=?, description=?, notes=?, updated_at=?
+             WHERE external_id=? AND source='shiftlog_sync'`,
+            [e.date, e.job || '', e.code || '', e.hours || 0, e.timeIn || '', e.timeOut || '',
+             e.breakMins || 0, e.startMiles || 0, e.endMiles || 0, e.totalMiles || 0,
+             e.desc || '', e.notes || '', nowIso, String(e.id)]
+          );
+        } else {
+          await tursoExecute(
+            `INSERT INTO time_entries (date, job, code, hours, time_in, time_out, break_mins,
+             start_miles, end_miles, total_miles, description, notes, source, external_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'shiftlog_sync', ?, ?, ?)`,
+            [e.date, e.job || '', e.code || '', e.hours || 0, e.timeIn || '', e.timeOut || '',
+             e.breakMins || 0, e.startMiles || 0, e.endMiles || 0, e.totalMiles || 0,
+             e.desc || '', e.notes || '', String(e.id), nowIso, nowIso]
+          );
+        }
+        return;
+      }
+
+      if (op.kind === 'entry_delete') {
+        await tursoExecute(
+          "DELETE FROM time_entries WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [String(op.payload.id)]
+        );
+        return;
+      }
+
+      if (op.kind === 'invoice_upsert') {
+        const inv = op.payload;
+
+        // ShiftLog has no separate "customer" concept, only a job name and
+        // its saved contact info - matched to LedgerBox's customers table
+        // by that same job name, since that's the closest equivalent LedgerBox
+        // has. If a LedgerBox customer already exists under a different name
+        // for the same client, this creates a second customer record rather
+        // than linking to it — easy to consolidate afterward in LedgerBox's
+        // Customers tab, but worth knowing rather than assuming a silent match.
+        let customerId = null;
+        const existingCustomer = await tursoExecute("SELECT id FROM customers WHERE name = ?", [inv.job]);
+        if (existingCustomer.rows.length) {
+          customerId = existingCustomer.rows[0].id;
+        } else if (inv.customerInfo.email || inv.customerInfo.phone || inv.customerInfo.address) {
+          const createdCustomer = await tursoExecute(
+            "INSERT INTO customers (name, email, phone, address, job, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?)",
+            [inv.job, inv.customerInfo.email || '', inv.customerInfo.phone || '', inv.customerInfo.address || '', inv.job, nowIso, nowIso]
+          );
+          customerId = createdCustomer.lastInsertRowid;
+        }
+
+        const existingInvoice = await tursoExecute(
+          "SELECT id FROM invoices WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [String(inv.id)]
+        );
+
+        let invoiceId;
+        if (existingInvoice.rows.length) {
+          invoiceId = existingInvoice.rows[0].id;
+          await tursoExecute(
+            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, updated_at=?
+             WHERE id=?`,
+            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, nowIso, invoiceId]
+          );
+          await tursoExecute("DELETE FROM invoice_line_items WHERE invoice_id = ?", [invoiceId]);
+        } else {
+          // Grab and advance the shared invoice-number counter. A genuinely
+          // simultaneous grab from two devices could in theory produce a
+          // duplicate number — a cosmetic risk only, not a data-integrity one,
+          // and the HTTP protocol this connection uses doesn't support the
+          // kind of transaction that would fully rule it out.
+          const counterRow = await tursoExecute("SELECT value FROM settings WHERE key = 'next_invoice_number'", []);
+          const invoiceNumber = counterRow.rows.length ? counterRow.rows[0].value : '1001';
+          const nextNumber = String(parseInt(invoiceNumber, 10) + 1);
+          await tursoExecute(
+            "INSERT INTO settings (key, value) VALUES ('next_invoice_number', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [nextNumber]
+          );
+
+          const created = await tursoExecute(
+            `INSERT INTO invoices (invoice_number, customer_id, job, date_created, period_start, period_end, status,
+             subtotal, tax_rate, tax_amount, total, currency, notes, source, external_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', 'Synced from ShiftLog', 'shiftlog_sync', ?, ?, ?)`,
+            [invoiceNumber, customerId, inv.job, nowIso.split('T')[0], inv.startDate, inv.endDate,
+             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, String(inv.id), nowIso, nowIso]
+          );
+          invoiceId = created.lastInsertRowid;
+        }
+
+        let sortOrder = 0;
+        for (const line of inv.lineItems) {
+          await tursoExecute(
+            "INSERT INTO invoice_line_items (invoice_id, description, quantity, rate, amount, taxable, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [invoiceId, line.description, line.quantity, line.rate, line.amount, line.taxable ? 1 : 0, sortOrder]
+          );
+          sortOrder++;
+        }
+        return;
+      }
+    }
+
+    let syncInProgress = false;
+
+    // Processes the queue in order, stopping at the first failure so a
+    // flaky connection can't apply a later change before an earlier one for
+    // the same entry. Safe to call anytime - checks connectivity/config
+    // itself, and skips re-entrantly if already running.
+    async function flushSyncQueue() {
+      if (syncInProgress) return { flushed: 0, remaining: getSyncQueue().length, ok: false, skipped: true };
+      if (!tursoConfigured()) {
+        updateSyncStatusDisplay();
+        return { flushed: 0, remaining: 0, ok: true };
+      }
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        updateSyncStatusDisplay();
+        return { flushed: 0, remaining: getSyncQueue().length, ok: false };
+      }
+
+      syncInProgress = true;
+      let flushed = 0;
+      let ok = true;
+      try {
+        const queue = getSyncQueue();
+        while (queue.length > 0) {
+          const op = queue[0];
+          try {
+            await applySyncOp(op);
+            queue.shift();
+            setSyncQueue(queue); // persist progress after every success
+            flushed++;
+          } catch (e) {
+            console.warn('Sync paused - will retry:', e.message);
+            ok = false;
+            break;
+          }
+        }
+        return { flushed, remaining: queue.length, ok };
+      } finally {
+        syncInProgress = false;
+        updateSyncStatusDisplay();
+      }
+    }
+
+    function manualSyncNow() {
+      if (!tursoConfigured()) {
+        alert('Enter your Turso Database URL and Auth Token above first (the same ones used in LedgerBox).');
+        return;
+      }
+      flushSyncQueue();
+    }
+
+    function updateSyncStatusDisplay() {
+      const statusEl = document.getElementById('syncStatusText');
+      if (!statusEl) return;
+
+      if (!tursoConfigured()) {
+        statusEl.textContent = 'Not configured';
+        return;
+      }
+      const pending = getSyncQueue().length;
+      if (syncInProgress) {
+        statusEl.textContent = 'Syncing…';
+      } else if (pending === 0) {
+        statusEl.textContent = '✅ Synced';
+      } else if (navigator.onLine === false) {
+        statusEl.textContent = `⏳ ${pending} pending (offline)`;
+      } else {
+        statusEl.textContent = `⏳ ${pending} pending`;
+      }
+    }
+
+    // ==================== end sync module ====================
+
     // Jobs worked in the last 7 days (today + previous 6 days), most recent first
     function getRecentJobs() {
       const today = new Date();
@@ -2938,6 +3327,7 @@
         existingEntry.desc = existingEntry.desc 
           ? `${existingEntry.desc}\n• [${timeFormatted}] ${taskDesc}` 
           : `• [${timeFormatted}] ${taskDesc}`;
+        enqueueSyncOp('entry_upsert', existingEntry);
       } else {
         // Create new lightweight entry if none exists for today
         const newEntry = {
@@ -2956,9 +3346,11 @@
           notes: ''
         };
         entries.push(newEntry);
+        enqueueSyncOp('entry_upsert', newEntry);
       }
 
       await setStoredData(entries);
+      flushSyncQueue();
       
       // Clear inputs
       document.getElementById('quickTaskDesc').value = '';
@@ -3036,6 +3428,15 @@
         if (toggleEl) toggleEl.checked = true;
         toggleWakeLock(true);
       }
+
+      // Restore saved Turso sync settings and try flushing anything left
+      // over from a previous session (e.g. the app was closed while offline)
+      const tursoUrlEl = document.getElementById('tursoUrl');
+      const tursoTokenEl = document.getElementById('tursoToken');
+      if (tursoUrlEl) tursoUrlEl.value = getTursoConfig().url;
+      if (tursoTokenEl) tursoTokenEl.value = getTursoConfig().token;
+      updateSyncStatusDisplay();
+      flushSyncQueue();
     }
 
     function toggleMenu() {
@@ -3130,7 +3531,7 @@
     // to say) rather than something you deliberately typed in yourself.
     function propagateMileageForward(savedEntry, oldBaseline) {
       const newBaseline = parseFloat(savedEntry.endMiles) || parseFloat(savedEntry.startMiles) || 0;
-      if (!newBaseline) return;
+      if (!newBaseline) return null;
 
       const candidates = entries
         .filter(e => e.id !== savedEntry.id)
@@ -3138,7 +3539,7 @@
         .sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
 
       const next = candidates[0];
-      if (!next) return;
+      if (!next) return null;
 
       const nextStart = parseFloat(next.startMiles) || 0;
       const safeToUpdate = nextStart === 0 || (oldBaseline && nextStart === oldBaseline);
@@ -3147,7 +3548,9 @@
         next.startMiles = newBaseline;
         const nextEnd = parseFloat(next.endMiles) || 0;
         next.totalMiles = nextEnd >= newBaseline ? (nextEnd - newBaseline) : 0;
+        return next;
       }
+      return null;
     }
 
     async function saveEntry(e) {
@@ -3211,13 +3614,21 @@
       // to the next day's start mileage too, as long as that next entry still looks
       // like it was auto-filled (blank, or matching the old/incorrect baseline) rather
       // than a value you typed in on purpose.
+      let propagatedEntry = null;
       if (savedEntryRef) {
-        propagateMileageForward(savedEntryRef, oldBaseline);
+        propagatedEntry = propagateMileageForward(savedEntryRef, oldBaseline);
       }
 
       // Remember this code against this job for next time
       if (codeValue.trim()) {
         await addJobCode(jobName, codeValue);
+      }
+
+      if (savedEntryRef) {
+        enqueueSyncOp('entry_upsert', savedEntryRef);
+      }
+      if (propagatedEntry) {
+        enqueueSyncOp('entry_upsert', propagatedEntry);
       }
 
       // If a material cost was entered alongside this shift, log it as its own expense
@@ -3226,7 +3637,7 @@
       if (shiftMaterialCostVal > 0) {
         const shiftMaterialDescVal = document.getElementById('shiftMaterialDesc').value.trim();
         const shiftMaterialVendorVal = document.getElementById('shiftMaterialVendor').value.trim();
-        expenses.unshift({
+        const materialExpense = {
           id: Date.now() + 1,
           date: newDate,
           amount: shiftMaterialCostVal,
@@ -3235,12 +3646,16 @@
           job: jobName,
           note: shiftMaterialDescVal || 'Added from shift log',
           receipt: pendingShiftReceiptDataUrl
-        });
+        };
+        expenses.unshift(materialExpense);
         await setStoredExpenses(expenses);
+        enqueueSyncOp('expense_upsert', materialExpense);
         updateVendorDatalist();
         renderExpenses();
         renderExpenseSummary();
       }
+
+      flushSyncQueue();
 
       await setStoredData(entries);
       await clearStoredDraft();
@@ -3497,6 +3912,8 @@
           await setStoredTrash(trashedEntries);
         }
         await setStoredData(entries);
+        enqueueSyncOp('entry_delete', { id });
+        flushSyncQueue();
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
@@ -3509,12 +3926,15 @@
       if (entries.length === 0) return;
       if (confirm('Clear all entries? They\'ll be moved to Trash (in Settings) and can be restored individually.')) {
         const timestamp = new Date().toISOString();
+        const clearedIds = entries.map(e => e.id);
         entries.forEach(e => { e.deletedAt = timestamp; });
         trashedEntries = [...entries, ...trashedEntries];
         await setStoredTrash(trashedEntries);
 
         entries = [];
         await setStoredData(entries);
+        clearedIds.forEach(id => enqueueSyncOp('entry_delete', { id }));
+        flushSyncQueue();
         renderSummaries();
         autoFillPreviousMileage();
         updateJobDatalist();
@@ -3639,6 +4059,129 @@
         info: getJobInfo(job),
         businessName: localStorage.getItem('shiftlog_business_name') || ''
       };
+    }
+
+    // ---- Invoice sync (make an invoice on the phone, have it show up in LedgerBox) ----
+
+    const SHIFTLOG_INVOICES_KEY = 'shiftlog_invoices'; // [{ id, job, startDate, endDate, createdAt }]
+    // A lightweight local record just for sync identity — ShiftLog's Invoice
+    // Generator itself stays exactly as it was (a live preview computed from
+    // entries/expenses/items, not its own stored data type). This just
+    // remembers "this job+period combination already has a cloud invoice
+    // with this id", so saving again (e.g. after fixing a typo) updates the
+    // same LedgerBox invoice rather than creating a duplicate one.
+
+    function getStoredShiftlogInvoices() {
+      try {
+        return JSON.parse(localStorage.getItem(SHIFTLOG_INVOICES_KEY) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function setStoredShiftlogInvoices(list) {
+      localStorage.setItem(SHIFTLOG_INVOICES_KEY, JSON.stringify(list));
+    }
+
+    function findOrCreateInvoiceId(job, startDate, endDate) {
+      const list = getStoredShiftlogInvoices();
+      const key = normalizeJobKey(job);
+      const existing = list.find(x => normalizeJobKey(x.job) === key && x.startDate === startDate && x.endDate === endDate);
+      if (existing) return existing.id;
+
+      const newRecord = { id: Date.now(), job, startDate, endDate, createdAt: new Date().toISOString() };
+      list.push(newRecord);
+      setStoredShiftlogInvoices(list);
+      return newRecord.id;
+    }
+
+    // Builds the same shape of line items LedgerBox's own "Pull Time &
+    // Expenses" feature would build for this job/period, so an invoice made
+    // on the phone and one made directly in LedgerBox look consistent:
+    // labor is taxable, mileage and expenses are not, and billable items
+    // carry whichever taxable flag was set on them.
+    function buildInvoiceLineItemsForSync(data) {
+      const lines = [];
+      if (data.rangeEntries.length > 0) {
+        lines.push({
+          description: `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`,
+          quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: true
+        });
+      }
+      if (data.includeMileage && data.totalMiles > 0) {
+        lines.push({
+          description: `Mileage: ${data.totalMiles.toFixed(1)} mi @ $${data.mileageRate.toFixed(3)}/mi`,
+          quantity: data.totalMiles, rate: data.mileageRate, amount: data.mileageTotal, taxable: false
+        });
+      }
+      if (data.includeExpenses) {
+        data.rangeExpenses.forEach(x => {
+          let label = x.category;
+          if (x.vendor) label += ` (${x.vendor})`;
+          if (x.note) label += ` — ${x.note}`;
+          lines.push({ description: label, quantity: 1, rate: parseFloat(x.amount), amount: parseFloat(x.amount), taxable: false });
+        });
+      }
+      if (data.includeItems) {
+        data.rangeItems.forEach(x => {
+          lines.push({ description: x.desc, quantity: 1, rate: parseFloat(x.price), amount: parseFloat(x.price), taxable: !!x.taxable });
+        });
+      }
+      return lines;
+    }
+
+    function computeInvoiceSyncTotals(data) {
+      const subtotal = data.laborTotal
+        + (data.includeMileage ? data.mileageTotal : 0)
+        + (data.includeExpenses ? data.expensesTotal : 0)
+        + (data.includeItems ? data.itemsSubtotal : 0);
+      const taxAmount = data.includeItems ? data.itemsTaxAmount : 0;
+      return { subtotal, taxAmount, total: subtotal + taxAmount };
+    }
+
+    // Saves the currently-configured invoice (job/dates/toggles) as a real
+    // invoice record and queues it for sync — this is what makes an
+    // invoice created on the phone show up in LedgerBox. Uses the exact
+    // same underlying data as "Generate Invoice"/"Email Invoice", so what
+    // you saved matches what you already previewed. New invoices land as
+    // drafts in LedgerBox, ready to review, attach a payment link to, or
+    // send from there.
+    function saveAndSyncInvoice() {
+      if (!tursoConfigured()) {
+        alert('Set up sync in Settings first (the same Turso Database URL and Auth Token used in LedgerBox), then try again.');
+        return;
+      }
+      const data = getInvoiceData(true);
+      if (!data) return; // getInvoiceData already alerted about what's missing
+
+      const invoiceId = findOrCreateInvoiceId(data.job, data.startDate, data.endDate);
+      const lineItems = buildInvoiceLineItemsForSync(data);
+      if (lineItems.length === 0) {
+        alert('Nothing billable is included — check at least one "Include…" box above, or there\'s no labor logged for this period.');
+        return;
+      }
+      const totals = computeInvoiceSyncTotals(data);
+
+      enqueueSyncOp('invoice_upsert', {
+        id: invoiceId,
+        job: data.job,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        subtotal: totals.subtotal,
+        taxRate: data.taxRate,
+        taxAmount: totals.taxAmount,
+        total: totals.total,
+        lineItems: lineItems,
+        customerInfo: { email: data.info.email, phone: data.info.phone, address: data.info.address }
+      });
+      flushSyncQueue();
+
+      const confirmEl = document.getElementById('invoiceSyncConfirm');
+      if (confirmEl) {
+        confirmEl.innerText = '✅ Saved — will appear in LedgerBox next time it syncs';
+        confirmEl.style.display = 'block';
+        setTimeout(() => { confirmEl.style.display = 'none'; }, 4000);
+      }
     }
 
     // Builds a printable invoice for a job over a date range from its logged entries and expenses
@@ -3855,6 +4398,20 @@
     window.addEventListener('afterprint', () => {
       document.body.classList.remove('printing-invoice');
     });
+
+    // Resume syncing the moment connectivity comes back, rather than
+    // waiting for the next local edit to trigger it
+    window.addEventListener('online', () => {
+      flushSyncQueue();
+    });
+
+    // Safety net: mobile browsers don't always fire 'online' reliably
+    // (especially in a home-screen PWA), so also retry periodically
+    // while the app is open
+    setInterval(() => {
+      flushSyncQueue();
+      updateSyncStatusDisplay();
+    }, 60000);
 
     // Initialize application on page load
     window.addEventListener('DOMContentLoaded', initApp);
