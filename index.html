@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.10 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.13 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,25 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.13</div>
+        <ul>
+          <li>New invoices synced from ShiftLog now default to hiding the Qty/Rate breakdown in LedgerBox's Invoice Preview — matching LedgerBox's own new default for invoices created there. You can still turn it back on per invoice in LedgerBox's Edit Invoice screen if a particular one needs it</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.12</div>
+        <ul>
+          <li>Fixed a real gap in invoices synced to LedgerBox: your actual Work Description for each day was getting dropped, leaving only a generic "Labor: X hrs @ $Y/hr" line. If any day in the period has a description, Labor now breaks into one line per day showing that day's own description, hours, and amount — Materials/Expenses stay a clearly separate group below, matching how most of your invoices are actually structured. Periods with no descriptions at all still show as a single combined Labor line, unchanged</li>
+          <li>The invoice's Notes area also now summarizes the actual work descriptions instead of just saying "Synced from ShiftLog"</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.11</div>
+        <ul>
+          <li>Added a Business Logo upload in Settings, right under Business Address — shows in the upper-left corner of every invoice you print or save as PDF from your phone. (Plain-text emailed invoices can't show an image, so the logo only appears on the printed/PDF version, same as any invoice sent as email text)</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.10</div>
         <ul>
@@ -1150,6 +1169,11 @@
       <div class="form-group">
         <label>Business Address (shown on invoices)</label>
         <textarea id="businessAddress" rows="2" placeholder="e.g. 123 Main St, Weaverville, NC 28787" onchange="saveBusinessAddress()"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Business Logo (shown on invoices)</label>
+        <input type="file" id="businessLogoInput" accept="image/*" onchange="handleBusinessLogoSelected(event)" />
+        <div id="businessLogoPreview" class="receipt-preview"></div>
       </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Job Details</h3>
@@ -3150,12 +3174,13 @@
         );
 
         let invoiceId;
+        const notesToSave = inv.notes || 'Synced from ShiftLog';
         if (existingInvoice.rows.length) {
           invoiceId = existingInvoice.rows[0].id;
           await tursoExecute(
-            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, updated_at=?
+            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, notes=?, updated_at=?
              WHERE id=?`,
-            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, nowIso, invoiceId]
+            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, nowIso, invoiceId]
           );
           await tursoExecute("DELETE FROM invoice_line_items WHERE invoice_id = ?", [invoiceId]);
         } else {
@@ -3174,10 +3199,10 @@
 
           const created = await tursoExecute(
             `INSERT INTO invoices (invoice_number, customer_id, job, date_created, period_start, period_end, status,
-             subtotal, tax_rate, tax_amount, total, currency, notes, source, external_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', 'Synced from ShiftLog', 'shiftlog_sync', ?, ?, ?)`,
+             subtotal, tax_rate, tax_amount, total, currency, notes, source, external_id, show_rate_details, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', ?, 'shiftlog_sync', ?, 0, ?, ?)`,
             [invoiceNumber, customerId, inv.job, nowIso.split('T')[0], inv.startDate, inv.endDate,
-             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, String(inv.id), nowIso, nowIso]
+             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, String(inv.id), nowIso, nowIso]
           );
           invoiceId = created.lastInsertRowid;
         }
@@ -3566,6 +3591,7 @@
       if (businessNameEl) businessNameEl.value = localStorage.getItem('shiftlog_business_name') || '';
       const businessAddressEl = document.getElementById('businessAddress');
       if (businessAddressEl) businessAddressEl.value = localStorage.getItem('shiftlog_business_address') || '';
+      renderBusinessLogoPreview();
 
       // Weekly summaries collapsed by default to save scroll space; remembers your choice after that
       const savedCollapsed = localStorage.getItem('shiftlog_summary_collapsed');
@@ -4157,6 +4183,44 @@
       localStorage.setItem('shiftlog_business_address', value);
     }
 
+    // Business logo for the invoice header - reuses the same compressImage()
+    // helper as receipt photos, since a full-resolution logo isn't needed
+    // for an invoice and would just bloat localStorage.
+    async function handleBusinessLogoSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const dataUrl = await compressImage(file, 400, 0.85);
+        localStorage.setItem('shiftlog_business_logo', dataUrl);
+        renderBusinessLogoPreview();
+      } catch (err) {
+        console.warn('Could not process logo image', err);
+        alert('Could not process that image — try a different one.');
+      }
+    }
+
+    function renderBusinessLogoPreview() {
+      const previewEl = document.getElementById('businessLogoPreview');
+      if (!previewEl) return;
+      const logo = localStorage.getItem('shiftlog_business_logo');
+      if (!logo) {
+        previewEl.innerHTML = '';
+        return;
+      }
+      previewEl.innerHTML = `
+        <img src="${logo}" style="max-height:60px; max-width:160px; border-radius:6px; border:1px solid var(--border);" />
+        <button type="button" class="receipt-remove-btn" onclick="removeBusinessLogo()">Remove Logo</button>
+      `;
+    }
+
+    function removeBusinessLogo() {
+      localStorage.removeItem('shiftlog_business_logo');
+      const inputEl = document.getElementById('businessLogoInput');
+      if (inputEl) inputEl.value = '';
+      renderBusinessLogoPreview();
+    }
+
     // Gathers everything needed for an invoice (entries, expenses, totals) without touching the DOM,
     // so both the on-screen preview and the emailed version build from the exact same numbers.
     function getInvoiceData(showAlerts) {
@@ -4233,7 +4297,8 @@
         info: getJobInfo(job),
         customerName: getJobInfo(job).customer || job,
         businessName: localStorage.getItem('shiftlog_business_name') || '',
-        businessAddress: localStorage.getItem('shiftlog_business_address') || ''
+        businessAddress: localStorage.getItem('shiftlog_business_address') || '',
+        businessLogo: localStorage.getItem('shiftlog_business_logo') || ''
       };
     }
 
@@ -4284,10 +4349,29 @@
     function buildInvoiceLineItemsForSync(data) {
       const lines = [];
       if (data.rangeEntries.length > 0) {
-        lines.push({
-          description: `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`,
-          quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: false
-        });
+        const anyDescribed = data.rangeEntries.some(e => e.desc && e.desc.trim());
+        if (anyDescribed) {
+          // At least one day has a real Work Description - break labor out
+          // day by day so what was actually done shows directly on its own
+          // line, the same way ShiftLog's own invoice preview already lists
+          // labor, instead of losing that detail into one combined summary
+          // line. Every day in the range becomes its own line (not just the
+          // described ones) so the hours aren't double-counted against a
+          // leftover aggregate line.
+          data.rangeEntries.forEach(e => {
+            const hours = parseFloat(e.hours) || 0;
+            const amount = hours * data.rate;
+            const label = e.desc && e.desc.trim()
+              ? `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}`
+              : `${e.date}: Labor`;
+            lines.push({ description: label, quantity: hours, rate: data.rate, amount: amount, taxable: false });
+          });
+        } else {
+          lines.push({
+            description: `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`,
+            quantity: data.totalHours, rate: data.rate, amount: data.laborTotal, taxable: false
+          });
+        }
       }
       if (data.includeMileage && data.totalMiles > 0) {
         lines.push({
@@ -4320,6 +4404,21 @@
       return { subtotal, taxAmount, total: subtotal + taxAmount };
     }
 
+    // Builds a notes summary from the actual Work Description text on each
+    // logged entry — the Labor line item itself stays a short billing
+    // summary ("Labor: 8.50 hrs @ $40.00/hr"), but what the work actually
+    // was (typed into "Work Description" when logging the shift) shows up
+    // here instead of being lost. Falls back to a plain marker if none of
+    // the entries in this period have a description filled in.
+    function buildSyncNotes(data) {
+      const described = data.rangeEntries.filter(e => e.desc && e.desc.trim());
+      if (described.length === 0) {
+        return 'Synced from ShiftLog';
+      }
+      const lines = described.map(e => `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}`);
+      return lines.join('\n');
+    }
+
     // Saves the currently-configured invoice (job/dates/toggles) as a real
     // invoice record and queues it for sync — this is what makes an
     // invoice created on the phone show up in LedgerBox. Uses the exact
@@ -4342,6 +4441,7 @@
         return;
       }
       const totals = computeInvoiceSyncTotals(data);
+      const notes = buildSyncNotes(data);
 
       enqueueSyncOp('invoice_upsert', {
         id: invoiceId,
@@ -4353,6 +4453,7 @@
         taxRate: data.taxRate,
         taxAmount: totals.taxAmount,
         total: totals.total,
+        notes: notes,
         lineItems: lineItems,
         customerInfo: { email: data.info.email, phone: data.info.phone, address: data.info.address }
       });
@@ -4434,6 +4535,7 @@
       resultEl.innerHTML = `
         <div class="invoice-header">
           <div>
+            ${data.businessLogo ? `<img src="${data.businessLogo}" style="max-height:60px; max-width:220px; margin-bottom:6px; display:block;" />` : ''}
             <h2 style="margin:0;">INVOICE</h2>
             ${data.businessName ? `<div>${data.businessName}</div>` : ''}
             ${data.businessAddress ? `<div style="white-space: pre-line;">${data.businessAddress}</div>` : ''}
