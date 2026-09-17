@@ -1202,7 +1202,7 @@
       </div>
       <div class="form-group">
         <label>Invoice Footer Message (shown at the bottom of invoices)</label>
-        <textarea id="invoiceFooterMessage" rows="2" placeholder="e.g. Thank you for using Icon Media Asheville LLC. We appreciate your business."></textarea>
+        <textarea id="invoiceFooterMessage" rows="2" placeholder="e.g. Thank you for using Icon Media Asheville LLC. We appreciate your business." onchange="saveInvoiceFooterMessage()"></textarea>
       </div>
 
       <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">Manage Job Details</h3>
@@ -4281,7 +4281,7 @@
       if (!file) return;
 
       try {
-        const dataUrl = await compressLogoImage(file, 660, 180);
+        const dataUrl = await compressImage(file, 400, 0.85);
         localStorage.setItem('shiftlog_business_logo', dataUrl);
         renderBusinessLogoPreview();
       } catch (err) {
@@ -4561,6 +4561,7 @@
       }
     }
 
+    // Builds a printable invoice for a job over a date range from its logged entries and expenses
     // Builds the invoice's HTML as a pure function of its data - used both
     // for the on-screen preview (generateInvoice()) and for PDF generation
     // (buildInvoicePdfBlob()), so the two can never drift apart or show
