@@ -906,7 +906,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.7 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.9 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -923,6 +923,18 @@
 
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.9</div>
+        <ul>
+          <li>Added a Customer Name field to Manage Job Details, separate from Job — handy if you do several different jobs for the same client (e.g. multiple jobs all for "Buchanan Restoration"). Set the same Customer Name on each of those jobs and their invoices now group under one customer in LedgerBox instead of creating a separate customer per job. Shows up wherever job info already appears (Job History, Prep List, Invoice Generator), and invoices now show it as "Bill To" with the specific Job listed separately. Jobs with no Customer Name set keep working exactly as before</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v3.8</div>
+        <ul>
+          <li>Added a "+ Log This Material Cost" button right in the Material Cost section — logs the expense immediately using the Date and Job already in the form, without submitting the rest of the entry. Add as many material costs as you need in a row, whether you're logging a new shift or editing an old one, without repeating "Update Entry" each time. The old behavior (filling in a material cost and hitting Add/Update Entry) still works exactly the same for a single one-off cost</li>
+        </ul>
+      </div>
       <div class="changelog-entry">
         <div class="changelog-version">v3.7</div>
         <ul>
@@ -1135,6 +1147,11 @@
         <label>Job</label>
         <input type="text" id="manageCodeJob" list="existingJobsList" placeholder="Type or select job..." oninput="renderManageCodes(); renderManageJobInfo();" />
       </div>
+      <div class="form-group">
+        <label>Customer Name <span class="autofill-tag" style="color:#94a3b8;">(so multiple jobs for the same client group together on invoices)</span></label>
+        <input type="text" id="manageJobCustomer" list="existingCustomersList" placeholder="e.g. Buchanan Restoration" onchange="saveJobInfoField('customer', this.value)" />
+        <datalist id="existingCustomersList"></datalist>
+      </div>
 
       <label style="margin-top: 8px;">Door Codes / Quick Ref</label>
       <div id="manageCodesList"></div>
@@ -1315,6 +1332,9 @@
           </div>
           <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" style="margin-top: 6px;" />
           <div id="shiftReceiptPreview" class="receipt-preview"></div>
+          <button type="button" class="btn-secondary" onclick="logMaterialCostOnly()" style="width: 100%; margin-top: 8px;">+ Log This Material Cost</button>
+          <div id="materialCostConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;"></div>
+          <div class="prep-empty" style="margin-top: 4px; margin-bottom: 0;">Logs this material cost right away using the Date and Job above, without submitting the rest of this entry — add as many as you need, one after another, whether you're adding a new shift or editing an old one.</div>
         </div>
 
         <button type="button" id="saveDraftBtn" class="btn-secondary" onclick="saveDraftManually()" style="width: 100%; margin-top: 6px;">💾 Save for Later (without finishing)</button>
@@ -1915,7 +1935,7 @@
 
     function getJobInfo(job) {
       const key = normalizeJobKey(job);
-      return (key && jobInfo[key]) ? jobInfo[key] : { phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+      return (key && jobInfo[key]) ? jobInfo[key] : { customer: '', phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
     }
 
     async function saveJobInfoField(field, value) {
@@ -1926,11 +1946,12 @@
       }
       const key = normalizeJobKey(job);
       if (!jobInfo[key]) {
-        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+        jobInfo[key] = { label: job.trim(), customer: '', phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
       }
       jobInfo[key][field] = value.trim();
       jobInfo[key].label = job.trim();
       await setStoredJobInfo(jobInfo);
+      updateCustomerDatalist();
 
       // Refresh anywhere this job's info is displayed
       renderJobHistory();
@@ -1941,11 +1962,22 @@
     function renderManageJobInfo() {
       const job = document.getElementById('manageCodeJob').value;
       const info = getJobInfo(job);
+      document.getElementById('manageJobCustomer').value = info.customer || '';
       document.getElementById('manageJobPhone').value = info.phone || '';
       document.getElementById('manageJobEmail').value = info.email || '';
       document.getElementById('manageJobAddress').value = info.address || '';
       document.getElementById('manageJobPaymentLink').value = info.paymentLink || '';
       document.getElementById('manageJobBilledThrough').value = info.billedThrough || '';
+    }
+
+    // Suggests previously-used customer names when typing a new job's
+    // Customer Name, so "Buchanan Restoration" autocompletes the same way
+    // across every different job you do for them
+    function updateCustomerDatalist() {
+      const datalist = document.getElementById('existingCustomersList');
+      if (!datalist) return;
+      const uniqueCustomers = [...new Set(Object.values(jobInfo).map(v => v.customer).filter(Boolean))].sort();
+      datalist.innerHTML = uniqueCustomers.map(c => `<option value="${c}">`).join('');
     }
 
     // Renders a compact tap-friendly block (address/phone/email/payment link/billed-through) for the given job into the target container
@@ -1959,7 +1991,7 @@
       }
 
       const info = getJobInfo(job);
-      if (!info.phone && !info.email && !info.address && !info.paymentLink && !info.billedThrough) {
+      if (!info.customer && !info.phone && !info.email && !info.address && !info.paymentLink && !info.billedThrough) {
         el.innerHTML = '';
         return;
       }
@@ -1968,6 +2000,7 @@
       const telHref = info.phone ? info.phone.replace(/[^0-9+]/g, '') : '';
 
       el.innerHTML = `
+        ${info.customer ? `<span class="job-info-link" style="font-weight:700;">👤 ${info.customer}</span>` : ''}
         ${info.billedThrough ? `<span class="job-info-billed">✅ Billed through ${info.billedThrough}</span>` : ''}
         ${info.address ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="job-info-link">📍 ${info.address}</a>` : ''}
         ${info.phone ? `<a href="tel:${telHref}" class="job-info-link">📞 ${info.phone}</a>` : ''}
@@ -2015,7 +2048,7 @@
 
       const key = normalizeJobKey(job);
       if (!jobInfo[key]) {
-        jobInfo[key] = { label: job.trim(), phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+        jobInfo[key] = { label: job.trim(), customer: '', phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
       }
       jobInfo[key].billedThrough = endDate;
       jobInfo[key].label = job.trim();
@@ -2259,6 +2292,69 @@
       if (inputEl) inputEl.value = '';
       const previewEl = document.getElementById('shiftReceiptPreview');
       if (previewEl) previewEl.innerHTML = '';
+    }
+
+    // Logs a material cost right away as its own expense, using whatever
+    // Date and Job are currently in the form above — whether you're adding
+    // a brand new shift or in the middle of editing an old one. Unlike
+    // submitting the whole entry, this doesn't touch the rest of the form:
+    // the date/job/hours/etc. you're working on stay exactly as they are,
+    // and only the material cost fields clear afterward — so you can log
+    // several material costs in a row without repeating "Update Entry"
+    // for each one.
+    async function logMaterialCostOnly() {
+      const amount = parseFloat(document.getElementById('shiftMaterialCost').value) || 0;
+      if (amount <= 0) {
+        alert('Enter an amount for this material cost first.');
+        return;
+      }
+
+      const date = document.getElementById('entryDate').value || new Date().toISOString().split('T')[0];
+      const job = document.getElementById('entryJob').value.trim();
+      if (!job) {
+        alert('Enter a job first — this expense needs to be tied to a job.');
+        return;
+      }
+
+      const description = document.getElementById('shiftMaterialDesc').value.trim();
+      const category = document.getElementById('shiftMaterialCategory').value;
+      const vendor = document.getElementById('shiftMaterialVendor').value.trim();
+
+      const materialExpense = {
+        id: Date.now(),
+        date: date,
+        amount: amount,
+        category: category,
+        vendor: vendor,
+        job: job,
+        note: description || 'Added from shift log',
+        receipt: pendingShiftReceiptDataUrl
+      };
+      expenses.unshift(materialExpense);
+      await setStoredExpenses(expenses);
+      enqueueSyncOp('expense_upsert', materialExpense);
+      flushSyncQueue();
+
+      updateVendorDatalist();
+      renderExpenses();
+      renderExpenseSummary();
+
+      // Clear just the material cost fields - the rest of the form (date,
+      // job, hours, everything else) is left exactly as the user had it,
+      // ready for another material cost or to finish the entry itself.
+      document.getElementById('shiftMaterialCost').value = '';
+      document.getElementById('shiftMaterialDesc').value = '';
+      document.getElementById('shiftMaterialCategory').value = 'Materials';
+      removePendingShiftReceipt();
+      // Vendor stays filled in, same convenience as the standalone Expenses card,
+      // in case the next material cost is from the same vendor.
+
+      const confirmEl = document.getElementById('materialCostConfirm');
+      if (confirmEl) {
+        confirmEl.innerText = `✅ Logged $${amount.toFixed(2)} — add another, or continue with this entry`;
+        confirmEl.style.display = 'block';
+        setTimeout(() => { confirmEl.style.display = 'none'; }, 4000);
+      }
     }
 
     async function addExpense() {
@@ -3015,21 +3111,25 @@
       if (op.kind === 'invoice_upsert') {
         const inv = op.payload;
 
-        // ShiftLog has no separate "customer" concept, only a job name and
-        // its saved contact info - matched to LedgerBox's customers table
-        // by that same job name, since that's the closest equivalent LedgerBox
-        // has. If a LedgerBox customer already exists under a different name
-        // for the same client, this creates a second customer record rather
-        // than linking to it — easy to consolidate afterward in LedgerBox's
-        // Customers tab, but worth knowing rather than assuming a silent match.
+        // Now uses the Customer Name you set in Manage Job Details (falling
+        // back to the job name if none was set, for invoices created before
+        // that field existed) — this is what lets multiple different jobs
+        // for the same client (e.g. several jobs all for "Buchanan
+        // Restoration") group under one LedgerBox customer record instead
+        // of creating a separate one per job.
+        const customerName = inv.customerName || inv.job;
         let customerId = null;
-        const existingCustomer = await tursoExecute("SELECT id FROM customers WHERE name = ?", [inv.job]);
+        const existingCustomer = await tursoExecute("SELECT id FROM customers WHERE name = ?", [customerName]);
         if (existingCustomer.rows.length) {
           customerId = existingCustomer.rows[0].id;
-        } else if (inv.customerInfo.email || inv.customerInfo.phone || inv.customerInfo.address) {
+        } else {
+          // Always create the customer record now (even with no contact
+          // info yet) — the whole point of a Customer Name is that it
+          // exists to group jobs under, so an invoice with a customer name
+          // set should never end up with no linked customer at all.
           const createdCustomer = await tursoExecute(
             "INSERT INTO customers (name, email, phone, address, job, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?)",
-            [inv.job, inv.customerInfo.email || '', inv.customerInfo.phone || '', inv.customerInfo.address || '', inv.job, nowIso, nowIso]
+            [customerName, inv.customerInfo.email || '', inv.customerInfo.phone || '', inv.customerInfo.address || '', inv.job, nowIso, nowIso]
           );
           customerId = createdCustomer.lastInsertRowid;
         }
@@ -3430,6 +3530,7 @@
       updateCodeDatalist();
       renderManageCodes();
       renderManageJobInfo();
+      updateCustomerDatalist();
       renderTrash();
       renderPrepList();
       renderPrepReminder();
@@ -3487,6 +3588,10 @@
       const tursoTokenEl = document.getElementById('tursoToken');
       if (tursoUrlEl) tursoUrlEl.value = getTursoConfig().url;
       if (tursoTokenEl) tursoTokenEl.value = getTursoConfig().token;
+      if (tursoConfigured() && localStorage.getItem(SYNC_BACKFILLED_KEY) !== 'true') {
+        queueAllExistingDataForSync();
+        localStorage.setItem(SYNC_BACKFILLED_KEY, 'true');
+      }
       updateSyncStatusDisplay();
       flushSyncQueue();
     }
@@ -4109,6 +4214,7 @@
         itemsSubtotal, itemsTaxableSubtotal, itemsTaxAmount, itemsTotalWithTax,
         laborTotal, mileageTotal, grandTotal,
         info: getJobInfo(job),
+        customerName: getJobInfo(job).customer || job,
         businessName: localStorage.getItem('shiftlog_business_name') || ''
       };
     }
@@ -4222,6 +4328,7 @@
       enqueueSyncOp('invoice_upsert', {
         id: invoiceId,
         job: data.job,
+        customerName: data.customerName,
         startDate: data.startDate,
         endDate: data.endDate,
         subtotal: totals.subtotal,
@@ -4318,7 +4425,8 @@
           </div>
         </div>
         <div class="invoice-bill-to">
-          <strong>Bill To:</strong> ${data.job}
+          <strong>Bill To:</strong> ${data.customerName}
+          ${data.customerName !== data.job ? `<div>Job: ${data.job}</div>` : ''}
           ${data.info.address ? `<div>${data.info.address}</div>` : ''}
           ${data.info.phone ? `<div>${data.info.phone}</div>` : ''}
           ${data.info.email ? `<div>${data.info.email}</div>` : ''}
@@ -4372,7 +4480,8 @@
       lines.push(`Date: ${new Date().toISOString().split('T')[0]}`);
       lines.push(`Period: ${data.startDate} to ${data.endDate}`);
       lines.push('');
-      lines.push(`Bill To: ${data.job}`);
+      lines.push(`Bill To: ${data.customerName}`);
+      if (data.customerName !== data.job) lines.push(`Job: ${data.job}`);
       if (data.info.address) lines.push(data.info.address);
       if (data.info.phone) lines.push(data.info.phone);
       if (data.info.email) lines.push(data.info.email);
