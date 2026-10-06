@@ -922,7 +922,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.16 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.45 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -940,6 +940,20 @@
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
       <div class="changelog-entry">
+        <div class="changelog-version">v3.45</div>
+        <ul>
+          <li>Number bumped to match LedgerBox 3.45 (which adds Check for Updates on the desktop). No other change on the phone</li>
+        </ul>
+        <div class="changelog-version">v3.44</div>
+        <ul>
+          <li>Version number jumps from 3.16 to 3.44 to match LedgerBox, which is at 3.44. From here on the two apps carry the same number and are bumped together, so if the phone and the desktop ever show different versions you know one of them is behind. ShiftLog now also records its version in the shared database each time it syncs, so a future LedgerBox can show it and warn when they differ</li>
+          <li>Dates now show as month/day/year (10/06/2026) everywhere in the app: entry lists, job history, expenses, week headings, Billed Through, and on invoices and invoice emails. Dates are still stored and synced the same way underneath, so nothing in LedgerBox changes</li>
+          <li>Fixed: logging a shift or expense after about 8 pm defaulted to tomorrow's date (the clock was read in UTC). Today now means today where you are; the same fix applies to the date stamped on invoices synced to LedgerBox</li>
+          <li>Saving an invoice to LedgerBox is now all-or-nothing: the invoice and every line go in one request, so a dropped connection can't leave a half-saved invoice behind</li>
+          <li>Invoice numbers are picked the same way LedgerBox picks them (never reusing a number that already exists), so the two apps can't hand out the same number</li>
+          <li>Once LedgerBox has marked a synced invoice Sent, Paid or Void, re-saving it from the phone leaves it alone instead of rewriting it; only drafts are updated</li>
+          <li>Money on synced invoices is rounded to whole cents, matching LedgerBox</li>
+        </ul>
         <div class="changelog-version">v3.16</div>
         <ul>
           <li>ShiftLog and LedgerBox now share the same version number, bumped together from here on, so it's always obvious whether you're running matching versions of both</li>
@@ -1733,6 +1747,7 @@
     const TURSO_URL_KEY = 'shiftlog_turso_url';
     const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
     const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
+    const APP_VERSION = '3.45'; // kept equal to LedgerBox's version; bump both together
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
@@ -1745,7 +1760,7 @@
     let wakeLock = null;
 
     // Set initial date
-    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('entryDate').value = localISODate();
 
     // Screen Wake Lock API handler
     async function toggleWakeLock(enable) {
@@ -1934,7 +1949,7 @@
       const draft = await getStoredDraft();
       if (!draft || isDraftEmpty(draft)) return;
 
-      document.getElementById('entryDate').value = draft.date || new Date().toISOString().split('T')[0];
+      document.getElementById('entryDate').value = draft.date || localISODate();
       document.getElementById('entryJob').value = draft.job || '';
       document.getElementById('entryCode').value = draft.code || '';
       document.getElementById('entryHours').value = draft.hours || '';
@@ -2114,7 +2129,7 @@
 
       el.innerHTML = `
         ${info.customer ? `<span class="job-info-link" style="font-weight:700;">👤 ${info.customer}</span>` : ''}
-        ${info.billedThrough ? `<span class="job-info-billed">✅ Billed through ${info.billedThrough}</span>` : ''}
+        ${info.billedThrough ? `<span class="job-info-billed">✅ Billed through ${fmtUS(info.billedThrough)}</span>` : ''}
         ${info.address ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="job-info-link">📍 ${info.address}</a>` : ''}
         ${info.phone ? `<a href="tel:${telHref}" class="job-info-link">📞 ${info.phone}</a>` : ''}
         ${info.email ? `<a href="mailto:${info.email}" class="job-info-link">✉️ ${info.email}</a>` : ''}
@@ -2181,11 +2196,30 @@
       }
     }
 
+    // Today's date (or any Date) as YYYY-MM-DD in LOCAL time. Never use
+    // toISOString() for this: it gives the UTC date, which from about 8 pm
+    // Eastern onward is already tomorrow - so a shift logged in the evening
+    // landed on the wrong day, and invoices synced at night carried the
+    // next day's date.
+    function localISODate(d) {
+      const x = d || new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
+    }
+
+    // YYYY-MM-DD (how dates are STORED and synced) -> MM/DD/YYYY (how they
+    // are SHOWN). Anything that isn't a plain ISO date is returned as-is.
+    function fmtUS(iso) {
+      if (!iso) return '';
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+      return m ? `${m[2]}/${m[3]}/${m[1]}` : String(iso);
+    }
+
     // Simple date-string arithmetic helper (YYYY-MM-DD in, YYYY-MM-DD out)
     function addDays(dateStr, days) {
       const d = new Date(dateStr + 'T00:00:00');
       d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
+      return localISODate(d);
     }
 
     // Marks a job as billed through the invoice's End Date — the point you've now invoiced up to.
@@ -2224,7 +2258,7 @@
 
       const confirmEl = document.getElementById('billedConfirm');
       if (confirmEl) {
-        confirmEl.innerText = `✅ Marked billed through ${endDate} for ${job.trim()}`;
+        confirmEl.innerText = `✅ Marked billed through ${fmtUS(endDate)} for ${job.trim()}`;
         confirmEl.style.display = 'block';
         clearTimeout(billedConfirmTimer);
         billedConfirmTimer = setTimeout(() => {
@@ -2271,7 +2305,7 @@
 
       listEl.innerHTML = trashedEntries.map(e => `
         <div class="job-history-row">
-          <div class="job-history-date">${e.date}</div>
+          <div class="job-history-date">${fmtUS(e.date)}</div>
           <div class="job-history-details">
             <strong>${e.job}</strong> — ${e.hours} hrs
           </div>
@@ -2505,7 +2539,7 @@
         return;
       }
 
-      const date = document.getElementById('entryDate').value || new Date().toISOString().split('T')[0];
+      const date = document.getElementById('entryDate').value || localISODate();
       const job = document.getElementById('entryJob').value.trim();
       if (!job) {
         alert('Enter a job first — this expense needs to be tied to a job.');
@@ -2557,7 +2591,7 @@
     }
 
     async function addExpense() {
-      const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0];
+      const date = document.getElementById('expenseDate').value || localISODate();
       const amount = parseFloat(document.getElementById('expenseAmount').value);
       const category = document.getElementById('expenseCategory').value;
       const vendor = document.getElementById('expenseVendor').value.trim();
@@ -2634,7 +2668,7 @@
       }
 
       const startOfWeek = document.getElementById('startOfWeek') ? document.getElementById('startOfWeek').value : '1';
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = localISODate();
       const currentWeekKey = getWeekKey(todayStr, startOfWeek);
       const currentMonthKey = todayStr.slice(0, 7); // YYYY-MM
 
@@ -2686,7 +2720,7 @@
             : `<div class="expense-thumb-placeholder">🧾</div>`}
           <div class="expense-details">
             <span class="expense-amount">$${parseFloat(x.amount).toFixed(2)}</span> · ${x.category}${x.vendor ? ` · ${x.vendor}` : ''}
-            <div class="expense-meta">${x.date}${x.job ? ` · ${x.job}` : ''}${x.note ? ` · ${x.note}` : ''}</div>
+            <div class="expense-meta">${fmtUS(x.date)}${x.job ? ` · ${x.job}` : ''}${x.note ? ` · ${x.note}` : ''}</div>
           </div>
           <div class="expense-actions">
             <button type="button" class="action-btn" title="Delete" onclick="deleteExpense(${x.id})">🗑️</button>
@@ -2719,7 +2753,7 @@
       const link = document.createElement('a');
 
       link.setAttribute('href', url);
-      link.setAttribute('download', `shiftlog_expenses_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `shiftlog_expenses_${localISODate()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -2770,7 +2804,7 @@
     }
 
     async function addInvoiceItem() {
-      const date = document.getElementById('invoiceItemDate').value || new Date().toISOString().split('T')[0];
+      const date = document.getElementById('invoiceItemDate').value || localISODate();
       const job = document.getElementById('invoiceItemJob').value.trim();
       const desc = document.getElementById('invoiceItemDesc').value.trim();
       const price = parseFloat(document.getElementById('invoiceItemPrice').value);
@@ -2821,7 +2855,7 @@
           <div class="expense-thumb-placeholder">🏷️</div>
           <div class="expense-details">
             <span class="expense-amount">$${parseFloat(x.price).toFixed(2)}</span> · ${x.desc}${x.taxable ? '' : ' <span style="color:#94a3b8;">(no tax)</span>'}
-            <div class="expense-meta">${x.date} · ${x.job}</div>
+            <div class="expense-meta">${fmtUS(x.date)} · ${x.job}</div>
           </div>
           <div class="expense-actions">
             <button type="button" class="action-btn" title="Delete" onclick="deleteInvoiceItem(${x.id})">🗑️</button>
@@ -3022,7 +3056,7 @@
 
       listEl.innerHTML = jobEntries.map(e => `
         <div class="job-history-row">
-          <div class="job-history-date">${e.date}</div>
+          <div class="job-history-date">${fmtUS(e.date)}</div>
           <div class="job-history-details">
             <strong>${e.hours} hrs</strong>${e.totalMiles ? ` · ${e.totalMiles} mi` : ''}${e.code ? ` · <span class="code-badge">${e.code}</span>` : ''}
             ${e.desc ? `<div class="job-history-desc">${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
@@ -3219,6 +3253,47 @@
       };
     }
 
+    // Runs several statements as ONE request inside a transaction, so a
+    // dropped connection part-way can never leave half an invoice behind:
+    // either every statement lands or none does. Uses Turso's /v1/batch
+    // with the same BEGIN / step-conditions / COMMIT / ROLLBACK shape the
+    // official libsql client (and LedgerBox) uses. Statements may not read
+    // each other's results, so an invoice's lines find their invoice by
+    // its external_id, not by a returned row id.
+    async function tursoBatch(statements) {
+      const { url, token } = getTursoConfig();
+      if (!url || !token) throw new Error('Turso sync is not configured');
+      const mk = (sql, args) => ({ sql, args: (args || []).map(encodeTursoValue), named_args: [], want_rows: false });
+      const steps = [{ stmt: mk('BEGIN') }];
+      statements.forEach((st, i) => {
+        steps.push({ stmt: mk(st.sql, st.args), condition: { type: 'ok', step: i } });
+      });
+      const last = steps.length - 1;
+      steps.push({ stmt: mk('COMMIT'), condition: { type: 'ok', step: last } });
+      steps.push({ stmt: mk('ROLLBACK'), condition: { type: 'not', cond: { type: 'ok', step: last + 1 } } });
+
+      const resp = await fetch(`${tursoHttpBase(url)}/v1/batch`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch: { steps } })
+      });
+      if (!resp.ok) {
+        let message = `Turso returned HTTP ${resp.status}`;
+        try { const errBody = await resp.json(); if (errBody.message) message = errBody.message; } catch (e) { /* generic message */ }
+        throw new Error(message);
+      }
+      const body = await resp.json();
+      const errors = (body.result && body.result.step_errors) || [];
+      const results = (body.result && body.result.step_results) || [];
+      // The COMMIT step is the one that matters: if it did not run, nothing landed.
+      const commitIdx = last + 1;
+      const firstError = errors.find(e => e);
+      if (firstError || !results[commitIdx]) {
+        throw new Error(firstError ? (firstError.message || 'database rejected the change') : 'transaction did not commit');
+      }
+      return true;
+    }
+
     function getSyncQueue() {
       try {
         return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
@@ -3339,54 +3414,69 @@
           customerId = createdCustomer.lastInsertRowid;
         }
 
+        const extId = String(inv.id);
         const existingInvoice = await tursoExecute(
-          "SELECT id FROM invoices WHERE external_id = ? AND source = 'shiftlog_sync'",
-          [String(inv.id)]
+          "SELECT id, status FROM invoices WHERE external_id = ? AND source = 'shiftlog_sync'",
+          [extId]
         );
 
-        let invoiceId;
         const notesToSave = inv.notes || 'Synced from ShiftLog';
         const showNotesToSave = inv.showNotes ? 1 : 0;
+        // Money to whole cents, the same way LedgerBox stores and prints it.
+        const cents = v => Math.round((parseFloat(v) || 0) * 100) / 100;
+        const whereInv = "(SELECT id FROM invoices WHERE external_id = ? AND source = 'shiftlog_sync')";
+        const lineStatements = inv.lineItems.map((line, sortOrder) => ({
+          sql: `INSERT INTO invoice_line_items (invoice_id, description, quantity, rate, amount, taxable, sort_order)
+                VALUES (${whereInv}, ?, ?, ?, ?, ?, ?)`,
+          args: [extId, line.description, line.quantity, cents(line.rate), cents(line.amount), line.taxable ? 1 : 0, sortOrder]
+        }));
+
         if (existingInvoice.rows.length) {
-          invoiceId = existingInvoice.rows[0].id;
-          await tursoExecute(
-            `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, notes=?, show_notes=?, updated_at=?
-             WHERE id=?`,
-            [customerId, inv.job, inv.startDate, inv.endDate, inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, showNotesToSave, nowIso, invoiceId]
-          );
-          await tursoExecute("DELETE FROM invoice_line_items WHERE invoice_id = ?", [invoiceId]);
-        } else {
-          // Grab and advance the shared invoice-number counter. A genuinely
-          // simultaneous grab from two devices could in theory produce a
-          // duplicate number — a cosmetic risk only, not a data-integrity one,
-          // and the HTTP protocol this connection uses doesn't support the
-          // kind of transaction that would fully rule it out.
-          const counterRow = await tursoExecute("SELECT value FROM settings WHERE key = 'next_invoice_number'", []);
-          const invoiceNumber = counterRow.rows.length ? counterRow.rows[0].value : '1001';
-          const nextNumber = String(parseInt(invoiceNumber, 10) + 1);
-          await tursoExecute(
-            "INSERT INTO settings (key, value) VALUES ('next_invoice_number', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            [nextNumber]
-          );
-
-          const created = await tursoExecute(
-            `INSERT INTO invoices (invoice_number, customer_id, job, date_created, period_start, period_end, status,
-             subtotal, tax_rate, tax_amount, total, currency, notes, show_notes, source, external_id, show_rate_details, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', ?, ?, 'shiftlog_sync', ?, 0, ?, ?)`,
-            [invoiceNumber, customerId, inv.job, nowIso.split('T')[0], inv.startDate, inv.endDate,
-             inv.subtotal, inv.taxRate, inv.taxAmount, inv.total, notesToSave, showNotesToSave, String(inv.id), nowIso, nowIso]
-          );
-          invoiceId = created.lastInsertRowid;
+          // Once LedgerBox has sent this invoice (or marked it paid or void)
+          // it belongs to LedgerBox: a re-save from the phone must not
+          // silently rewrite the totals or lines of something the customer
+          // already has. Only a draft is still ours to update.
+          const status = String(existingInvoice.rows[0].status || 'draft');
+          if (status !== 'draft') {
+            console.warn(`Invoice for ${inv.job} is already "${status}" in LedgerBox - left unchanged.`);
+            return;
+          }
+          await tursoBatch([
+            { sql: `UPDATE invoices SET customer_id=?, job=?, period_start=?, period_end=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, notes=?, show_notes=?, updated_at=?
+                    WHERE external_id=? AND source='shiftlog_sync' AND status='draft'`,
+              args: [customerId, inv.job, inv.startDate, inv.endDate, cents(inv.subtotal), inv.taxRate, cents(inv.taxAmount), cents(inv.total), notesToSave, showNotesToSave, nowIso, extId] },
+            { sql: `DELETE FROM invoice_line_items WHERE invoice_id = ${whereInv}`, args: [extId] },
+            ...lineStatements
+          ]);
+          return;
         }
 
-        let sortOrder = 0;
-        for (const line of inv.lineItems) {
-          await tursoExecute(
-            "INSERT INTO invoice_line_items (invoice_id, description, quantity, rate, amount, taxable, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [invoiceId, line.description, line.quantity, line.rate, line.amount, line.taxable ? 1 : 0, sortOrder]
-          );
-          sortOrder++;
-        }
+        // New invoice. Pick the number the same way LedgerBox does: the
+        // stored counter OR one past the highest number already in use,
+        // whichever is larger - so a counter that fell behind (restored
+        // backup, two devices) can never hand out a number that exists.
+        // If two devices still collide at the same instant, the unique
+        // invoice number makes the whole batch fail and roll back; the
+        // retry recomputes the number and tries again.
+        const counterRow = await tursoExecute("SELECT value FROM settings WHERE key = 'next_invoice_number'", []);
+        const stored = counterRow.rows.length ? parseInt(counterRow.rows[0].value, 10) : NaN;
+        const highestRow = await tursoExecute(
+          "SELECT MAX(CAST(invoice_number AS INTEGER)) AS hi FROM invoices WHERE invoice_number GLOB '[0-9]*'", []);
+        const highest = highestRow.rows.length && highestRow.rows[0].hi ? parseInt(highestRow.rows[0].hi, 10) : 0;
+        const number = Math.max(isNaN(stored) ? 1001 : stored, highest + 1);
+        const invoiceNumber = String(number);
+        const nextNumber = String(number + 1);
+
+        await tursoBatch([
+          { sql: "INSERT INTO settings (key, value) VALUES ('next_invoice_number', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            args: [nextNumber] },
+          { sql: `INSERT INTO invoices (invoice_number, customer_id, job, date_created, period_start, period_end, status,
+                  subtotal, tax_rate, tax_amount, total, currency, notes, show_notes, source, external_id, show_rate_details, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'usd', ?, ?, 'shiftlog_sync', ?, 0, ?, ?)`,
+            args: [invoiceNumber, customerId, inv.job, localISODate(), inv.startDate, inv.endDate,
+                   cents(inv.subtotal), inv.taxRate, cents(inv.taxAmount), cents(inv.total), notesToSave, showNotesToSave, extId, nowIso, nowIso] },
+          ...lineStatements
+        ]);
         return;
       }
 
@@ -3451,6 +3541,16 @@
             ok = false;
             break;
           }
+        }
+        if (ok && flushed > 0) {
+          // Leave a note of which phone-app version last synced, so LedgerBox
+          // can show it next to its own and flag a mismatch. One key, written
+          // only by the phone; LedgerBox never writes it. Best-effort.
+          try {
+            await tursoExecute(
+              "INSERT INTO settings (key, value) VALUES ('shiftlog_app_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+              [APP_VERSION]);
+          } catch (e) { /* purely informational */ }
         }
         return { flushed, remaining: queue.length, ok };
       } finally {
@@ -3691,7 +3791,7 @@
       const taskDesc = document.getElementById('quickTaskDesc').value.trim();
       const jobName = document.getElementById('quickTaskJob').value.trim();
       const hoursToAdd = parseFloat(document.getElementById('quickTaskMins').value) || 0;
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = localISODate();
 
       if (!taskDesc || !jobName) {
         alert('Please provide both a task description and job name.');
@@ -3772,14 +3872,14 @@
 
       // Default the expense date field to today, then render the expense list/summary
       const expenseDateEl = document.getElementById('expenseDate');
-      if (expenseDateEl) expenseDateEl.value = new Date().toISOString().split('T')[0];
+      if (expenseDateEl) expenseDateEl.value = localISODate();
       updateVendorDatalist();
       renderExpenses();
       renderExpenseSummary();
 
       // Default the invoice item date field to today, restore saved sales tax rate, and render the item list
       const invoiceItemDateEl = document.getElementById('invoiceItemDate');
-      if (invoiceItemDateEl) invoiceItemDateEl.value = new Date().toISOString().split('T')[0];
+      if (invoiceItemDateEl) invoiceItemDateEl.value = localISODate();
       const salesTaxRateEl = document.getElementById('salesTaxRate');
       if (salesTaxRateEl) salesTaxRateEl.value = localStorage.getItem('shiftlog_sales_tax_rate') || '7';
       renderInvoiceItems();
@@ -4104,7 +4204,7 @@
     function resetForm() {
       document.getElementById('shiftForm').reset();
       document.getElementById('editingId').value = '';
-      document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('entryDate').value = localISODate();
       document.getElementById('entryBreak').value = "0";
       document.getElementById('entryTotalMiles').value = '';
       document.getElementById('autofillTag').innerText = '';
@@ -4132,7 +4232,7 @@
       }
       
       const weekStart = new Date(d.setDate(diff));
-      return weekStart.toISOString().split('T')[0];
+      return localISODate(weekStart);
     }
 
     // Builds the calendar-style print layout: one grid per week, one cell per day,
@@ -4184,7 +4284,7 @@
         let cellsHtml = '';
 
         days.forEach(d => {
-          const dateStr = d.toISOString().split('T')[0];
+          const dateStr = localISODate(d);
           labelsHtml += `<div class="calendar-day-label">${dayNames[d.getDay()]}<br/>${d.getMonth() + 1}/${d.getDate()}</div>`;
 
           const dayEntries = weekEntries.filter(e => e.date === dateStr);
@@ -4205,7 +4305,7 @@
 
         container.innerHTML += `
           <div class="calendar-week">
-            <div class="calendar-week-summary">📅 Week of ${wKey} — ${wHours.toFixed(2)} hrs · ${wMiles.toFixed(1)} mi ($${wMileageDeduction}) · $${wPay}</div>
+            <div class="calendar-week-summary">📅 Week of ${fmtUS(wKey)} — ${wHours.toFixed(2)} hrs · ${wMiles.toFixed(1)} mi ($${wMileageDeduction}) · $${wPay}</div>
             <div class="calendar-grid">${labelsHtml}</div>
             <div class="calendar-grid">${cellsHtml}</div>
           </div>
@@ -4246,7 +4346,7 @@
         let html = `
           <div class="week-card">
             <div class="week-header">
-              <h3 class="week-title">📅 Week of ${wKey}</h3>
+              <h3 class="week-title">📅 Week of ${fmtUS(wKey)}</h3>
               <div class="week-stats-pills">
                 <span class="stat-pill">⏱️ ${wHours.toFixed(2)} hrs</span>
                 <span class="stat-pill">🚚 ${wMiles.toFixed(1)} mi ($${wMileageDeduction})</span>
@@ -4269,7 +4369,7 @@
           const hasDetails = e.desc || e.notes || e.timeIn || e.timeOut || e.breakMins || e.totalMiles || e.startMiles || e.endMiles;
 
           html += `<tr>
-            <td style="white-space: nowrap; font-weight: 500;">${e.date}</td>
+            <td style="white-space: nowrap; font-weight: 500;">${fmtUS(e.date)}</td>
             <td>
               <strong>${e.job}</strong><br/>
               ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
@@ -4373,7 +4473,7 @@
       const link = document.createElement('a');
       
       link.setAttribute('href', url);
-      link.setAttribute('download', `shiftlog_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `shiftlog_export_${localISODate()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -4573,7 +4673,7 @@
         // per day, so a two-week job doesn't turn into a dozen line items.
         const label = anyDescribed
           ? data.rangeEntries
-              .map(e => e.desc && e.desc.trim() ? `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}` : null)
+              .map(e => e.desc && e.desc.trim() ? `${fmtUS(e.date)}: ${e.desc.trim().replace(/\n/g, ' ')}` : null)
               .filter(Boolean)
               .join(' | ')
           : `Labor: ${data.totalHours.toFixed(2)} hrs @ $${data.rate.toFixed(2)}/hr`;
@@ -4624,7 +4724,7 @@
       if (described.length === 0) {
         return 'Synced from ShiftLog';
       }
-      const lines = described.map(e => `${e.date}: ${e.desc.trim().replace(/\n/g, ' ')}`);
+      const lines = described.map(e => `${fmtUS(e.date)}: ${e.desc.trim().replace(/\n/g, ' ')}`);
       return lines.join('\n');
     }
 
@@ -4688,7 +4788,7 @@
         const hrs = parseFloat(e.hours || 0);
         const amount = (hrs * data.rate).toFixed(2);
         return `<tr>
-          <td>${e.date}</td>
+          <td>${fmtUS(e.date)}</td>
           <td>${(e.desc || '').replace(/\n/g, '<br/>') || '—'}</td>
           <td style="text-align:right;">${e.hours}</td>
           <td style="text-align:right;">$${data.rate.toFixed(2)}</td>
@@ -4709,7 +4809,7 @@
             </thead>
             <tbody>
               ${data.rangeExpenses.map(x => `<tr>
-                <td>${x.date}</td>
+                <td>${fmtUS(x.date)}</td>
                 <td>${x.category}${x.vendor ? ` (${x.vendor})` : ''}${x.note ? ` — ${x.note}` : ''}</td>
                 <td style="text-align:right;">$${parseFloat(x.amount).toFixed(2)}</td>
               </tr>`).join('')}
@@ -4731,7 +4831,7 @@
             </thead>
             <tbody>
               ${data.rangeItems.map(x => `<tr>
-                <td>${x.date}</td>
+                <td>${fmtUS(x.date)}</td>
                 <td>${x.desc}${x.taxable ? '' : ' <span style="color:#94a3b8;">(no tax)</span>'}</td>
                 <td style="text-align:right;">$${parseFloat(x.price).toFixed(2)}</td>
               </tr>`).join('')}
@@ -4749,8 +4849,8 @@
             ${data.businessAddress ? `<div style="white-space: pre-line;">${data.businessAddress}</div>` : ''}
           </div>
           <div style="text-align:right; font-size:0.85rem; color:#64748b;">
-            <div>Date: ${new Date().toISOString().split('T')[0]}</div>
-            <div>Period: ${data.startDate} to ${data.endDate}</div>
+            <div>Date: ${fmtUS(localISODate())}</div>
+            <div>Period: ${fmtUS(data.startDate)} to ${fmtUS(data.endDate)}</div>
           </div>
         </div>
         <div class="invoice-bill-to">
@@ -4897,7 +4997,7 @@
           await navigator.share({
             files: [file],
             title: `Invoice — ${data.job}`,
-            text: `Invoice for ${data.customerName} (${data.startDate} to ${data.endDate})`
+            text: `Invoice for ${data.customerName} (${fmtUS(data.startDate)} to ${fmtUS(data.endDate)})`
           });
         } else {
           alert('Direct sharing isn\'t available on this browser/device. Use "🖨️ Print / Save as PDF" below, then attach the saved file to your email manually.');
@@ -4936,7 +5036,7 @@
         const blob = await buildInvoicePdfBlob(data);
         const filename = buildInvoiceFilename(data);
         const file = new File([blob], filename, { type: 'application/pdf' });
-        shareBatchQueue.push({ file, jobLabel: `${data.job} (${data.startDate} to ${data.endDate})` });
+        shareBatchQueue.push({ file, jobLabel: `${data.job} (${fmtUS(data.startDate)} to ${fmtUS(data.endDate)})` });
         renderShareBatch();
       } catch (err) {
         console.warn('Could not add invoice to share batch', err);
@@ -5009,8 +5109,8 @@
       const lines = [];
       lines.push(`INVOICE${data.businessName ? ' — ' + data.businessName : ''}`);
       if (data.businessAddress) lines.push(data.businessAddress);
-      lines.push(`Date: ${new Date().toISOString().split('T')[0]}`);
-      lines.push(`Period: ${data.startDate} to ${data.endDate}`);
+      lines.push(`Date: ${fmtUS(localISODate())}`);
+      lines.push(`Period: ${fmtUS(data.startDate)} to ${fmtUS(data.endDate)}`);
       lines.push('');
       lines.push(`Bill To: ${data.customerName}`);
       if (data.customerName !== data.job) lines.push(`Job: ${data.job}`);
@@ -5024,7 +5124,7 @@
         data.rangeEntries.forEach(e => {
           const hrs = parseFloat(e.hours || 0);
           const amount = (hrs * data.rate).toFixed(2);
-          lines.push(`${e.date}  ${e.desc || 'Work performed'} — ${e.hours} hrs @ $${data.rate.toFixed(2)} = $${amount}`);
+          lines.push(`${fmtUS(e.date)}  ${e.desc || 'Work performed'} — ${e.hours} hrs @ $${data.rate.toFixed(2)} = $${amount}`);
         });
         lines.push(`Total Hours: ${data.totalHours.toFixed(2)}  |  Labor Subtotal: $${data.laborTotal.toFixed(2)}`);
         lines.push('');
@@ -5038,7 +5138,7 @@
       if (data.includeItems && data.rangeItems.length) {
         lines.push('BILLABLE ITEMS');
         data.rangeItems.forEach(x => {
-          lines.push(`${x.date}  ${x.desc}${x.taxable ? '' : ' (no tax)'} = $${parseFloat(x.price).toFixed(2)}`);
+          lines.push(`${fmtUS(x.date)}  ${x.desc}${x.taxable ? '' : ' (no tax)'} = $${parseFloat(x.price).toFixed(2)}`);
         });
         lines.push(`Items Subtotal: $${data.itemsSubtotal.toFixed(2)}`);
         if (data.itemsTaxAmount > 0) {
@@ -5050,7 +5150,7 @@
       if (data.includeExpenses && data.rangeExpenses.length) {
         lines.push('MATERIALS & EXPENSES');
         data.rangeExpenses.forEach(x => {
-          lines.push(`${x.date}  ${x.category}${x.vendor ? ' (' + x.vendor + ')' : ''}${x.note ? ' — ' + x.note : ''} = $${parseFloat(x.amount).toFixed(2)}`);
+          lines.push(`${fmtUS(x.date)}  ${x.category}${x.vendor ? ' (' + x.vendor + ')' : ''}${x.note ? ' — ' + x.note : ''} = $${parseFloat(x.amount).toFixed(2)}`);
         });
         lines.push(`Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}`);
         lines.push('');
@@ -5066,7 +5166,7 @@
         lines.push(data.invoiceFooter);
       }
 
-      const subject = `Invoice — ${data.job} (${data.startDate} to ${data.endDate})`;
+      const subject = `Invoice — ${data.job} (${fmtUS(data.startDate)} to ${fmtUS(data.endDate)})`;
       const body = lines.join('\n');
       const mailtoUrl = `mailto:${data.info.email ? encodeURIComponent(data.info.email) : ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
