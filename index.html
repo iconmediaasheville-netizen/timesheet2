@@ -922,7 +922,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.46 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.47 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -940,6 +940,10 @@
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
       <div class="changelog-entry">
+        <div class="changelog-version">v3.47</div>
+        <ul>
+          <li>Number bumped to match LedgerBox 3.47 (desktop updates now install themselves without any command windows). No change on the phone</li>
+        </ul>
         <div class="changelog-version">v3.46</div>
         <ul>
           <li>Number bumped to match LedgerBox 3.46 (PayPal fees counted as an expense, safer imports, clearer date pickers on the desktop). No change on the phone</li>
@@ -1751,7 +1755,7 @@
     const TURSO_URL_KEY = 'shiftlog_turso_url';
     const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
     const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
-    const APP_VERSION = '3.46'; // kept equal to LedgerBox's version; bump both together
+    const APP_VERSION = '3.47'; // kept equal to LedgerBox's version; bump both together
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
