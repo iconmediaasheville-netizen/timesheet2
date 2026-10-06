@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shiftlog-v3-45';
+const CACHE_NAME = 'shiftlog-v3-46';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
