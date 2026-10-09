@@ -922,7 +922,7 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.47 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.48 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
@@ -940,6 +940,11 @@
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
       <div class="changelog-entry">
+        <div class="changelog-version">v3.48</div>
+        <ul>
+          <li>Mileage is now valued at the IRS rate for each trip's year (2025: 70¢, 2026: 72.5¢), the same as LedgerBox. Leave the Mileage Rate box empty to use it, or type your own rate (saved on this phone)</li>
+          <li>Matches LedgerBox 3.48, which now has an installer, a 30-day free trial and license keys</li>
+        </ul>
         <div class="changelog-version">v3.47</div>
         <ul>
           <li>Number bumped to match LedgerBox 3.47 (desktop updates now install themselves without any command windows). No change on the phone</li>
@@ -1210,8 +1215,9 @@
       </div>
       <div class="row">
         <div class="form-group">
-          <label>IRS Mileage Rate ($/mi)</label>
-          <input type="number" id="irsRate" step="0.001" value="0.67" onchange="renderSummaries()" />
+          <label>Mileage Rate ($/mi)</label>
+          <input type="number" id="irsRate" step="0.001" value="" placeholder="IRS rate" onchange="saveIrsRate()" />
+          <div id="irsRateHint" style="font-size: 11px; color: #64748b; margin-top: 4px;"></div>
         </div>
         <div class="form-group">
           <label>Sales Tax Rate (%)</label>
@@ -1755,7 +1761,7 @@
     const TURSO_URL_KEY = 'shiftlog_turso_url';
     const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
     const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
-    const APP_VERSION = '3.47'; // kept equal to LedgerBox's version; bump both together
+    const APP_VERSION = '3.48'; // kept equal to LedgerBox's version; bump both together
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
@@ -2209,6 +2215,46 @@
     // Eastern onward is already tomorrow - so a shift logged in the evening
     // landed on the wrong day, and invoices synced at night carried the
     // next day's date.
+    // v3.48: the IRS business mileage rate changes every year (2025: 70¢, 2026: 72.5¢). Each trip is
+    // valued at the rate for ITS year, the same table LedgerBox uses (ledgerbox/mileage.py). Leave the
+    // Mileage Rate box empty to use it; a number typed there is used for every trip instead (saved on this phone).
+    const IRS_MILEAGE_RATES = { 2019: 0.58, 2020: 0.575, 2021: 0.56, 2023: 0.655, 2024: 0.67, 2025: 0.70, 2026: 0.725 };
+    const IRS_LATEST_YEAR = 2026;
+    function irsRateFor(dateStr) {
+      const custom = parseFloat(document.getElementById('irsRate').value);
+      if (custom > 0) return custom;
+      const s = String(dateStr || localISODate(new Date()));
+      const y = parseInt(s.slice(0, 4), 10);
+      if (y === 2022) return s >= '2022-07-01' ? 0.625 : 0.585;   // mid-year change
+      if (IRS_MILEAGE_RATES[y] !== undefined) return IRS_MILEAGE_RATES[y];
+      return IRS_MILEAGE_RATES[y > IRS_LATEST_YEAR ? IRS_LATEST_YEAR : 2019];
+    }
+    function mileageDeduction(list) {
+      return list.reduce((sum, e) => sum + (parseFloat(e.totalMiles || 0) * irsRateFor(e.date)), 0);
+    }
+    function saveIrsRate() {
+      const v = document.getElementById('irsRate').value.trim();
+      try { v ? localStorage.setItem('irsRateCustom', v) : localStorage.removeItem('irsRateCustom'); } catch (e) {}
+      updateIrsRateHint();
+      renderSummaries();
+    }
+    function loadIrsRate() {
+      let v = null;
+      try { v = localStorage.getItem('irsRateCustom'); } catch (e) {}
+      // 0.67 was the old fixed default (before 3.48), not a choice anyone made: don't keep it.
+      document.getElementById('irsRate').value = (v && v !== '0.67') ? v : '';
+      updateIrsRateHint();
+    }
+    function updateIrsRateHint() {
+      const el = document.getElementById('irsRateHint');
+      if (!el) return;
+      const custom = parseFloat(document.getElementById('irsRate').value);
+      const y = new Date().getFullYear();
+      el.textContent = custom > 0
+        ? `Using your rate, $${custom.toFixed(3)}/mi, for every trip. Clear the box to use the IRS rate for each year.`
+        : `Empty = the IRS rate for each trip's year (${y}: ${(irsRateFor(localISODate(new Date())) * 100).toFixed(1).replace(/\.0$/, '')}¢/mi).`;
+    }
+
     function localISODate(d) {
       const x = d || new Date();
       const pad = n => String(n).padStart(2, '0');
@@ -3875,6 +3921,7 @@
       renderTrash();
       renderPrepList();
       renderPrepReminder();
+      loadIrsRate();
       renderSummaries();
       await restoreDraftIfPresent();
 
@@ -4251,7 +4298,6 @@
       container.innerHTML = '';
 
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
       const startOfWeek = document.getElementById('startOfWeek').value;
 
       if (entries.length === 0) {
@@ -4276,7 +4322,7 @@
           wMiles += parseFloat(e.totalMiles || 0);
         });
         const wPay = (wHours * rate).toFixed(2);
-        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+        const wMileageDeduction = mileageDeduction(weekEntries).toFixed(2);
 
         // wKey is already the correct week-start date (matches the Start Week On setting),
         // so just walk forward 7 days from it
@@ -4325,7 +4371,6 @@
       const container = document.getElementById('summaryContainer');
       container.innerHTML = '';
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
       const startOfWeek = document.getElementById('startOfWeek').value;
 
       if (entries.length === 0) {
@@ -4349,7 +4394,7 @@
           wMiles += parseFloat(e.totalMiles || 0);
         });
         const wPay = (wHours * rate).toFixed(2);
-        const wMileageDeduction = (wMiles * mileageRate).toFixed(2);
+        const wMileageDeduction = mileageDeduction(weeks[wKey]).toFixed(2);
 
         let html = `
           <div class="week-card">
@@ -4563,7 +4608,7 @@
 
       const key = normalizeJobKey(job);
       const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
-      const mileageRate = parseFloat(document.getElementById('irsRate').value) || 0;
+      const mileageRate = irsRateFor(endDate);   // the rate for the invoice period's year
       const taxRate = getSalesTaxRate();
 
       const rangeEntries = entries
