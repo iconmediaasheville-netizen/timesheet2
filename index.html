@@ -902,6 +902,27 @@
       }
     }
 
+    .sl-status { font-size: 0.78rem; margin-top: 4px; font-weight: 600; }
+    .sl-sent-back { color: #b45309; }
+    .sl-approved { color: #15803d; }
+    .sl-waiting { color: #64748b; font-weight: 500; }
+    .sl-hint { color: #64748b; font-weight: 400; font-size: 0.78rem; }
+    .acct-tabs { display: flex; gap: 6px; margin: 8px 0; }
+    .acct-tabs button { flex: 1; padding: 8px; border: 1px solid var(--border); background: #fff; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .acct-tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .acct-msg { color: #b45309; font-size: 0.85rem; min-height: 1em; margin-top: 6px; }
+    .acct-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; line-height: 1.45; }
+    .acct-warn { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 10px; padding: 8px 10px; font-size: 0.85rem; margin-top: 8px; }
+
+    .list-range { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 6px; font-size: 0.85rem; color: #64748b; }
+    .list-range button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #334155; }
+    .list-range button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .list-range .count { margin-left: auto; }
+    .list-more { text-align: center; margin: 8px 0 0; }
+    .list-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 10px 12px;
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; font-weight: 600; font-size: 0.92rem; color: #334155; cursor: pointer; }
+    .list-more button { background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.88rem; }
+
     @media print {
       .no-print {
         display: none !important;
@@ -912,8 +933,12 @@
        single-file PWA) so an invoice can be handed to the native Share
        sheet as an actual attachment, instead of only a plain-text email
        or a manual print-then-save-then-attach flow. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script>
+    if (!window.html2canvas) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>');
+    if (!window.jspdf) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>');
+  </script>
 </head>
 <body>
 
@@ -922,12 +947,18 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.48 · <button type="button" onclick="toggleChangelog()">What's new</button></div>
+        <div class="app-version no-print">v3.48.3 · <button type="button" onclick="toggleChangelog()">What's new</button> · <a href="https://boxridgesoftware.com/guides/ledger/user-guide#phone-setup" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600;">User guide</a></div>
       </div>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
         <span id="hamburgerBadge" class="hamburger-badge" style="display: none;"></span>
       </button>
+    </div>
+
+    <div id="acctBanner" class="acct-box no-print" style="display:none; margin-bottom: 12px; display:none; align-items:center; gap:10px;">
+      <span style="flex:1;">Got an invite code from your employer, or a ShiftLog plan? <strong>Sign in</strong> to sync your hours.</span>
+      <button type="button" onclick="openAccountFromBanner()" style="padding: 6px 12px;">Sign in</button>
+      <button type="button" class="action-btn" aria-label="Not now" onclick="dismissAccountBanner()">✕</button>
     </div>
 
     <!-- Prep Reminder Bar -->
@@ -940,6 +971,23 @@
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
       <div class="changelog-entry">
+        <div class="changelog-version">v3.48.3</div>
+        <ul>
+          <li>The expense and billable-item lists are folded away under "Expense list" and "Item list", so the page doesn't keep growing. Tap to open; it shows the last 7 days, with Last 30 days and All buttons (remembered on this phone). Totals still count everything</li>
+        </ul>
+        <div class="changelog-version">v3.48.2</div>
+        <ul>
+          <li>Receipt photos are saved to your company's account too (after the expense, whenever there's signal), so the office sees them in Ledger and a new phone gets them back</li>
+          <li>Invoices now look exactly like Ledger's, with the same lines, and use the business name, address, logo, footer and sales tax rate set in Ledger</li>
+          <li>A saved invoice shows its company invoice number</li>
+        </ul>
+        <div class="changelog-version">v3.48.1</div>
+        <ul>
+          <li>New home: boxridgesoftware.com/shiftlog. Add it to your home screen from there; it opens with no signal too</li>
+          <li>Sign in to your company's Boxridge account (Settings, Boxridge account), or join with the invite code your employer sent. Everything already on this phone is uploaded the first time, and a new phone gets it all back</li>
+          <li>Entries the office sends back show their note; approved hours are locked so payroll numbers don't move</li>
+          <li>Invoice numbers come from the company, so the phone and Ledger never use the same number</li>
+        </ul>
         <div class="changelog-version">v3.48</div>
         <ul>
           <li>Mileage is now valued at the IRS rate for each trip's year (2025: 70¢, 2026: 72.5¢), the same as LedgerBox. Leave the Mileage Rate box empty to use it, or type your own rate (saved on this phone)</li>
@@ -1199,6 +1247,51 @@
 
     <!-- Hidden Settings Menu Drawer -->
     <div id="settingsDrawer" class="settings-drawer no-print">
+      <div id="accountCard">
+        <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">👤 Boxridge account</h3>
+        <div id="acctSignedOut">
+          <div class="prep-empty" style="margin-bottom: 6px;">On a Boxridge ShiftLog plan? Sign in so your hours, miles and expenses sync to your company's account. Everything already on this phone is uploaded the first time, and keeps working with no signal.</div>
+          <div id="acctWasSignedIn" class="acct-warn" style="display:none;">You were signed out (the owner may have removed this phone). Your entries are still here; sign in again to keep syncing.</div>
+          <div class="acct-tabs">
+            <button type="button" id="acctTabCode" class="active" onclick="showAccountTab('code')">I have an invite code</button>
+            <button type="button" id="acctTabLogin" onclick="showAccountTab('login')">Sign in</button>
+          </div>
+          <div id="acctCodeForm">
+            <div class="form-group">
+              <label>Invite code</label>
+              <input type="text" id="acctCode" placeholder="e.g. K7Q4-M2XP" autocapitalize="characters" autocomplete="off" />
+            </div>
+            <button type="button" class="btn-secondary" onclick="accountLookupCode()" style="width:100%;">Next</button>
+            <div id="acctJoinStep2" style="display:none; margin-top: 10px;">
+              <div id="acctJoinInfo" class="acct-box"></div>
+              <div class="form-group" style="margin-top: 8px;"><label>Your name</label><input type="text" id="acctJoinName" autocomplete="name" /></div>
+              <div class="form-group"><label>Your email</label><input type="email" id="acctJoinEmail" autocomplete="email" placeholder="for resetting a forgotten password" /></div>
+              <div class="form-group"><label>Choose a password</label><input type="password" id="acctJoinPassword" autocomplete="new-password" placeholder="at least 10 characters" /></div>
+              <button type="button" onclick="accountJoin()" style="width:100%;">Join</button>
+            </div>
+          </div>
+          <div id="acctLoginForm" style="display:none;">
+            <div class="form-group"><label>Email</label><input type="email" id="acctEmail" autocomplete="username" /></div>
+            <div class="form-group"><label>Password</label><input type="password" id="acctPassword" autocomplete="current-password" /></div>
+            <button type="button" onclick="accountSignIn()" style="width:100%;">Sign in</button>
+            <div class="prep-empty" style="margin: 6px 0 0;">Forgot it? Reset it at boxridgesoftware.com (Sign in, Forgot password).</div>
+          </div>
+          <div id="acctMsg" class="acct-msg"></div>
+        </div>
+        <div id="acctSignedIn" style="display:none;">
+          <div id="acctSummary" class="acct-box"></div>
+          <div id="acctReadOnly" class="acct-warn" style="display:none;"></div>
+          <div id="acctMoved" class="acct-warn" style="display:none;">ShiftLog has moved to <a href="https://boxridgesoftware.com/shiftlog/">boxridgesoftware.com/shiftlog</a>. Your entries are in your account now: open that link, add it to your home screen, and sign in with the same email.</div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top: 8px;">
+            <span id="acctSyncStatus" class="prep-empty" style="margin-bottom:0; flex:1;"></span>
+            <button type="button" class="btn-secondary" onclick="manualSyncNow()">Sync Now</button>
+          </div>
+          <div id="acctLastSync" class="sl-hint" style="margin-top: 2px;"></div>
+          <div id="acctProfileNote" class="sl-hint" style="margin-top: 4px; display:none;">Your invoices use the business name, address, logo, footer and sales tax rate set in Ledger for the company.</div>
+          <button type="button" class="btn-secondary" onclick="accountSignOut()" style="width:100%; margin-top: 8px;">Sign out of this phone</button>
+        </div>
+      </div>
+        <div style="border-bottom: 1px solid var(--border); margin: 14px 0;"></div>
       <h3 style="margin-top: 0; color: #9a3412; font-size: 1rem;">Preferences & Rates</h3>
       <div class="row">
         <div class="form-group">
@@ -1293,7 +1386,8 @@
       <div id="trashList"></div>
       <button type="button" class="btn-secondary" onclick="emptyTrash()" style="margin-top: 6px;">Empty Trash</button>
 
-      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">☁️ Sync to LedgerBox</h3>
+      <div id="tursoSection">
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">☁️ Sync to LedgerBox (your own Turso database)</h3>
       <div class="prep-empty" style="margin-bottom: 8px;">
         Keeps your time, mileage, and expense entries in sync with the LedgerBox desktop app automatically — no more exporting/importing CSVs by hand. ShiftLog still works fully offline; anything added while offline just syncs the next time you have a connection. Receipt photos stay on your phone and are not synced.
       </div>
@@ -1311,6 +1405,7 @@
       </div>
       <button type="button" class="btn-secondary" onclick="syncAllExistingData()" style="width: 100%; margin-top: 8px;">☁️ Sync All Existing Data to LedgerBox</button>
       <div class="prep-empty" style="margin-top: 4px; margin-bottom: 0;">This runs automatically the first time you set up sync above. Use this button if you ever need to force everything on this phone to sync again.</div>
+      </div>
     </div>
 
     <!-- Entry Form -->
@@ -1603,7 +1698,11 @@
         <button type="button" class="btn-secondary" onclick="exportExpensesCSV()">Export Expenses CSV</button>
       </div>
 
-      <div id="expenseList" class="expense-list"></div>
+      <button type="button" id="expenseToggle" class="list-toggle no-print" onclick="toggleList('expenses')"></button>
+      <div id="expenseListWrap" style="display:none;">
+        <div id="expenseRange" class="list-range no-print"></div>
+        <div id="expenseList" class="expense-list"></div>
+      </div>
     </div>
 
     <!-- Invoice Items Card -->
@@ -1644,7 +1743,11 @@
 
       <button type="button" class="btn-submit" onclick="addInvoiceItem()" style="background: #334155;">+ Add Item</button>
 
-      <div id="invoiceItemList" style="margin-top: 10px;"></div>
+      <button type="button" id="invoiceItemToggle" class="list-toggle no-print" onclick="toggleList('items')" style="margin-top: 10px;"></button>
+      <div id="invoiceItemListWrap" style="display:none;">
+        <div id="invoiceItemRange" class="list-range no-print"></div>
+        <div id="invoiceItemList"></div>
+      </div>
     </div>
 
     <!-- Invoice Card -->
@@ -1761,7 +1864,7 @@
     const TURSO_URL_KEY = 'shiftlog_turso_url';
     const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
     const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
-    const APP_VERSION = '3.48'; // kept equal to LedgerBox's version; bump both together
+    const APP_VERSION = '3.48.3'; // kept equal to LedgerBox's version; bump both together
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
@@ -1847,6 +1950,7 @@
     async function setStoredJobCodes(data) {
       const serialized = JSON.stringify(data);
       localStorage.setItem(JOBCODES_KEY, serialized);
+      markStateChanged();
 
       if (window.storage && typeof window.storage.set === 'function') {
         try {
@@ -2039,6 +2143,7 @@
     async function setStoredPrepItems(data) {
       const serialized = JSON.stringify(data);
       localStorage.setItem(PREPITEMS_KEY, serialized);
+      markStateChanged();
 
       if (window.storage && typeof window.storage.set === 'function') {
         try {
@@ -2065,6 +2170,7 @@
     async function setStoredJobInfo(data) {
       const serialized = JSON.stringify(data);
       localStorage.setItem(JOBINFO_KEY, serialized);
+      markStateChanged();
 
       if (window.storage && typeof window.storage.set === 'function') {
         try {
@@ -2161,6 +2267,11 @@
     // from this phone. Returns null (rather than throwing) on any
     // failure - a missed refresh here should never block using the app.
     async function fetchRemoteBilledThrough(job) {
+      if (accountConfigured()) {
+        // the account's "billed through" dates arrive with every sync (see applyPulledRecords)
+        const info = jobInfo[normalizeJobKey(job)];
+        return (info && info.billedThrough) || null;
+      }
       if (!tursoConfigured()) return null;
       try {
         const result = await tursoExecute(
@@ -2235,6 +2346,7 @@
     function saveIrsRate() {
       const v = document.getElementById('irsRate').value.trim();
       try { v ? localStorage.setItem('irsRateCustom', v) : localStorage.removeItem('irsRateCustom'); } catch (e) {}
+      markStateChanged();
       updateIrsRateHint();
       renderSummaries();
     }
@@ -2690,6 +2802,8 @@
     }
 
     async function deleteExpense(id) {
+      const lockedExpense = expenses.find(x => x.id == id);
+      if (lockedExpense && lockedExpense._locked) { lockedMessage('expense'); return; }
       if (!confirm('Delete this expense? This cannot be undone.')) return;
       expenses = expenses.filter(x => x.id != id);
       await setStoredExpenses(expenses);
@@ -2761,11 +2875,20 @@
       if (!listEl) return;
 
       if (expenses.length === 0) {
+        renderListRange('expenseRange', 'expenses', 0, 0, 'expenses');
+        renderListToggle('expenses', 0, 0);
         listEl.innerHTML = '<div class="prep-empty">No expenses logged yet.</div>';
         return;
       }
 
-      const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      const all = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      const sorted = all.filter(x => inListRange('expenses', x.date));
+      renderListRange('expenseRange', 'expenses', sorted.length, all.length, 'expenses');
+      renderListToggle('expenses', all.length, all.filter(x => x.date >= addDays(localISODate(), -6)).length);
+      if (!sorted.length) {
+        listEl.innerHTML = `<div class="prep-empty">No expenses in this time.</div>${moreLink('expenses', all.length, 'expenses')}`;
+        return;
+      }
 
       listEl.innerHTML = sorted.map(x => `
         <div class="expense-row">
@@ -2775,12 +2898,13 @@
           <div class="expense-details">
             <span class="expense-amount">$${parseFloat(x.amount).toFixed(2)}</span> · ${x.category}${x.vendor ? ` · ${x.vendor}` : ''}
             <div class="expense-meta">${fmtUS(x.date)}${x.job ? ` · ${x.job}` : ''}${x.note ? ` · ${x.note}` : ''}</div>
+            ${entryStatusBadge(x)}
           </div>
           <div class="expense-actions">
             <button type="button" class="action-btn" title="Delete" onclick="deleteExpense(${x.id})">🗑️</button>
           </div>
         </div>
-      `).join('');
+      `).join('') + moreLink('expenses', all.length - sorted.length, 'expenses');
     }
 
     function exportExpensesCSV() {
@@ -2815,11 +2939,40 @@
 
     function saveSalesTaxRate() {
       const value = document.getElementById('salesTaxRate').value;
-      localStorage.setItem('shiftlog_sales_tax_rate', value);
+      localStorage.setItem('shiftlog_sales_tax_rate', value); markStateChanged();
     }
 
     function getSalesTaxRate() {
+      const p = companyProfile();
+      if (p && p.tax_rate !== undefined && p.tax_rate !== '' && !isNaN(parseFloat(p.tax_rate))) return parseFloat(p.tax_rate);
       return parseFloat(document.getElementById('salesTaxRate').value) || 0;
+    }
+
+    // Signed in to a company, the invoice details set once in Ledger (name, address, email, phone, logo, footer,
+    // sales tax rate) are used for every phone's invoices; otherwise this phone's own settings.
+    function companyProfile() {
+      if (typeof accountConfigured === 'function' && !accountConfigured()) return null;
+      try { return JSON.parse(localStorage.getItem('shiftlog_company_profile') || 'null'); } catch (e) { return null; }
+    }
+    function invoiceBusinessDetails() {
+      const p = companyProfile() || {};
+      const pick = (v, k) => (v !== undefined && v !== null && v !== '' ? v : (localStorage.getItem(k) || ''));
+      const footerLocal = localStorage.getItem('shiftlog_invoice_footer');
+      let logo = p.logo ? (String(p.logo).startsWith('data:') ? p.logo : 'data:image/png;base64,' + p.logo) : '';
+      return {
+        businessName: pick(p.business_name, 'shiftlog_business_name'),
+        businessAddress: pick(p.business_address, 'shiftlog_business_address'),
+        businessEmail: p.business_email || '',
+        businessPhone: p.business_phone || '',
+        businessLogo: logo || localStorage.getItem('shiftlog_business_logo') || '',
+        invoiceFooter: p.invoice_footer !== undefined && p.invoice_footer !== null ? p.invoice_footer
+          : (footerLocal === null ? DEFAULT_INVOICE_FOOTER : footerLocal),
+      };
+    }
+    // An invoice already saved for this job and period keeps its number (from the company) and its date.
+    function savedInvoiceFor(job, startDate, endDate) {
+      const rec = getStoredShiftlogInvoices().find(x => normalizeJobKey(x.job) === normalizeJobKey(job) && x.startDate === startDate && x.endDate === endDate);
+      return rec ? { invoiceNumber: rec.number || '', invoiceDate: rec.invoiceDate || (rec.createdAt ? rec.createdAt.slice(0, 10) : '') } : { invoiceNumber: '', invoiceDate: '' };
     }
 
     // Storage helpers for billable invoice line items (distinct from expenses — these are
@@ -2845,6 +2998,7 @@
       const serialized = JSON.stringify(data);
       try {
         localStorage.setItem(INVOICEITEMS_KEY, serialized);
+        markStateChanged();
       } catch (e) {
         console.warn('localStorage set error for invoice items', e);
       }
@@ -2893,16 +3047,70 @@
       renderInvoiceItems();
     }
 
+    // v3.48.3: long lists show only what's recent. Expenses and billable items default to the last 7 days; tap
+    // This month or All to see more. The choice is remembered on this phone. Totals above always count everything.
+    const LIST_RANGES = [['week', 'Last 7 days', 7], ['month', 'Last 30 days', 30], ['all', 'All', 0]];
+    function listRange(name) {
+      const v = localStorage.getItem('shiftlog_range_' + name);
+      return LIST_RANGES.some(r => r[0] === v) ? v : 'week';
+    }
+    function setListRange(name, v) {
+      localStorage.setItem('shiftlog_range_' + name, v);
+      if (name === 'expenses') renderExpenses(); else renderInvoiceItems();
+    }
+    function inListRange(name, isoDate) {
+      const r = LIST_RANGES.find(x => x[0] === listRange(name));
+      if (!r || !r[2]) return true;
+      const from = addDays(localISODate(), -(r[2] - 1));
+      return (isoDate || '') >= from;
+    }
+    function renderListRange(elId, name, shown, total, noun) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (!total) { el.innerHTML = ''; return; }
+      const cur = listRange(name);
+      el.innerHTML = LIST_RANGES.map(([k, label]) =>
+        `<button type="button" class="${k === cur ? 'active' : ''}" onclick="setListRange('${name}', '${k}')">${label}</button>`).join('')
+        + `<span class="count">${shown} of ${total} ${noun}</span>`;
+    }
+    // v3.48.3: the lists are closed by default (tap to open; remembered), so the page stays short.
+    function listOpen(name) { return localStorage.getItem('shiftlog_list_open_' + name) === '1'; }
+    function toggleList(name) {
+      localStorage.setItem('shiftlog_list_open_' + name, listOpen(name) ? '0' : '1');
+      if (name === 'expenses') renderExpenses(); else renderInvoiceItems();
+    }
+    function renderListToggle(name, total, recent, noun) {
+      const ids = name === 'expenses' ? ['expenseToggle', 'expenseListWrap'] : ['invoiceItemToggle', 'invoiceItemListWrap'];
+      const btn = document.getElementById(ids[0]), wrap = document.getElementById(ids[1]);
+      if (!btn || !wrap) return;
+      const open = listOpen(name);
+      btn.style.display = total ? 'flex' : 'none';
+      btn.innerHTML = `<span>${open ? '▾' : '▸'} ${name === 'expenses' ? 'Expense list' : 'Item list'} (${total})</span><span class="sl-hint">${recent} in the last 7 days</span>`;
+      wrap.style.display = open || !total ? 'block' : 'none';
+    }
+    function moreLink(name, hidden, noun) {
+      return hidden > 0 ? `<div class="list-more"><button type="button" onclick="setListRange('${name}', 'all')">Show all ${hidden + ' older ' + noun}</button></div>` : '';
+    }
+
     function renderInvoiceItems() {
       const listEl = document.getElementById('invoiceItemList');
       if (!listEl) return;
 
       if (invoiceItems.length === 0) {
+        renderListRange('invoiceItemRange', 'items', 0, 0, 'items');
+        renderListToggle('items', 0, 0);
         listEl.innerHTML = '<div class="prep-empty">No billable items logged yet.</div>';
         return;
       }
 
-      const sorted = [...invoiceItems].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      const all = [...invoiceItems].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+      const sorted = all.filter(x => inListRange('items', x.date));
+      renderListRange('invoiceItemRange', 'items', sorted.length, all.length, 'items');
+      renderListToggle('items', all.length, all.filter(x => x.date >= addDays(localISODate(), -6)).length);
+      if (!sorted.length) {
+        listEl.innerHTML = `<div class="prep-empty">No items in this time.</div>${moreLink('items', all.length, 'items')}`;
+        return;
+      }
 
       listEl.innerHTML = sorted.map(x => `
         <div class="expense-row">
@@ -2915,7 +3123,7 @@
             <button type="button" class="action-btn" title="Delete" onclick="deleteInvoiceItem(${x.id})">🗑️</button>
           </div>
         </div>
-      `).join('');
+      `).join('') + moreLink('items', all.length - sorted.length, 'items');
     }
 
     function selectRecentJobInvoiceItem(job) {
@@ -3114,6 +3322,7 @@
           <div class="job-history-details">
             <strong>${e.hours} hrs</strong>${e.totalMiles ? ` · ${e.totalMiles} mi` : ''}${e.code ? ` · <span class="code-badge">${e.code}</span>` : ''}
             ${e.desc ? `<div class="job-history-desc">${e.desc.replace(/\n/g, '<br/>')}</div>` : ''}
+            ${entryStatusBadge(e)}
           </div>
           <div class="job-history-actions">
             <button type="button" class="action-btn" onclick="editEntry(${e.id})">✏️</button>
@@ -3213,7 +3422,7 @@
     // something from Trash), or if the automatic backfill didn't run for
     // some reason (sync was already configured before this feature existed).
     function syncAllExistingData() {
-      if (!tursoConfigured()) {
+      if (!syncEnabled()) {
         alert('Enter your Turso Database URL and Auth Token above first (the same ones used in LedgerBox).');
         return;
       }
@@ -3361,7 +3570,7 @@
     }
 
     function enqueueSyncOp(kind, payload) {
-      if (!tursoConfigured()) return; // sync isn't set up - nothing to queue
+      if (!syncEnabled()) return; // sync isn't set up - nothing to queue
       const queue = getSyncQueue();
       queue.push({ kind, payload, queuedAt: new Date().toISOString() });
       setSyncQueue(queue);
@@ -3569,6 +3778,16 @@
     // itself, and skips re-entrantly if already running.
     async function flushSyncQueue() {
       if (syncInProgress) return { flushed: 0, remaining: getSyncQueue().length, ok: false, skipped: true };
+      if (accountConfigured()) {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          updateSyncStatusDisplay();
+          return { flushed: 0, remaining: getSyncQueue().length, ok: false };
+        }
+        syncInProgress = true;
+        updateSyncStatusDisplay();
+        try { return await accountFlush(); }
+        finally { syncInProgress = false; updateSyncStatusDisplay(); }
+      }
       if (!tursoConfigured()) {
         updateSyncStatusDisplay();
         return { flushed: 0, remaining: 0, ok: true };
@@ -3614,34 +3833,607 @@
     }
 
     function manualSyncNow() {
-      if (!tursoConfigured()) {
-        alert('Enter your Turso Database URL and Auth Token above first (the same ones used in LedgerBox).');
+      if (!syncEnabled()) {
+        alert('Sign in to your Boxridge account above, or enter your Turso Database URL and Auth Token (the same ones used in LedgerBox).');
         return;
       }
       flushSyncQueue();
     }
 
     function updateSyncStatusDisplay() {
-      const statusEl = document.getElementById('syncStatusText');
-      if (!statusEl) return;
-
-      if (!tursoConfigured()) {
-        statusEl.textContent = 'Not configured';
+      const els = [document.getElementById('syncStatusText'), document.getElementById('acctSyncStatus')].filter(Boolean);
+      if (!els.length) return;
+      const header = document.getElementById('syncStatus');
+      const show = t => { els.forEach(el => { el.textContent = t; }); if (header && syncEnabled()) header.textContent = t; };
+      const pending = getSyncQueue().length;
+      const acct = getAccount();
+      if (!syncEnabled()) {
+        show(acct && acct.signedOut ? (pending ? `Signed out · ${pending} waiting on this phone` : 'Signed out') : 'Not configured');
         return;
       }
-      const pending = getSyncQueue().length;
       if (syncInProgress) {
-        statusEl.textContent = 'Syncing…';
+        show('Syncing…');
+      } else if (accountConfigured() && acct.access === 'read_only') {
+        show(pending ? `⏸ Account read-only · ${pending} waiting` : '⏸ Account read-only');
+      } else if (pending === 0 && receiptsWaiting()) {
+        show(`📷 ${receiptsWaiting()} receipt photo${receiptsWaiting() === 1 ? '' : 's'} waiting to upload`);
       } else if (pending === 0) {
-        statusEl.textContent = '✅ Synced';
+        show('✅ Synced');
       } else if (navigator.onLine === false) {
-        statusEl.textContent = `⏳ ${pending} pending (offline)`;
+        show(`⏳ ${pending} pending (offline)`);
       } else {
-        statusEl.textContent = `⏳ ${pending} pending`;
+        show(`⏳ ${pending} pending`);
       }
     }
 
     // ==================== end sync module ====================
+
+    // ==================== Boxridge account (company plans, v3.48.1) ====================
+    // Signed in to a Boxridge ShiftLog plan, the same queue above is sent to the company account on
+    // boxridgesoftware.com instead of a Turso database: in order, in batches, stopping at the first failure, so
+    // nothing is lost with no signal. After each push the phone pulls back what changed: its own records (a new
+    // phone, or the move from the old copy of ShiftLog, gets everything back), the company's "billed through" dates
+    // and what the office did - approved (locked), sent back with a note, invoice numbers.
+    const ACCOUNT_KEY = 'shiftlog_account';
+    const API_BASE_KEY = 'shiftlog_api_base';
+    const BOXRIDGE_URL = 'https://boxridgesoftware.com';
+    const PUSH_BATCH = 100;
+    const PUSH_MAX_BYTES = 1500000;
+    let applyingRemote = false;
+    let firstMerge = false;
+    let stateTimer = null;
+
+    function onBoxridgeSite() {
+      return /(^|\.)boxridgesoftware\.com$/.test(location.hostname) || location.pathname.startsWith('/shiftlog/');
+    }
+    function apiBase() {
+      const o = (localStorage.getItem(API_BASE_KEY) || '').trim();
+      if (o) return o.replace(/\/+$/, '');
+      return onBoxridgeSite() ? '' : BOXRIDGE_URL;
+    }
+    function getAccount() {
+      try { return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null'); } catch (e) { return null; }
+    }
+    function setAccount(a) {
+      if (a) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(a)); else localStorage.removeItem(ACCOUNT_KEY);
+    }
+    function accountConfigured() {
+      const a = getAccount();
+      return !!(a && a.token);
+    }
+    function syncEnabled() {
+      return accountConfigured() || tursoConfigured();
+    }
+    function escHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function accountApi(method, path, body, token) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      let resp;
+      try {
+        resp = await fetch(apiBase() + '/api/teams' + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+      } catch (e) {
+        const err = new Error('No connection - try again when you have signal.'); err.offline = true; throw err;
+      }
+      let data = {};
+      try { data = await resp.json(); } catch (e) { /* not JSON */ }
+      if (!resp.ok || data.ok === false) {
+        const err = new Error(data.message || `The server said ${resp.status}.`);
+        err.status = resp.status; err.code = data.error || ''; throw err;
+      }
+      return data;
+    }
+
+    function rememberAccount(data, extra) {
+      const prev = getAccount() || {};
+      const a = {
+        ...prev, ...(extra || {}),
+        company: data.company ? data.company.name : prev.company,
+        companyId: data.company ? data.company.id : prev.companyId,
+        role: data.role || prev.role, plan: data.plan_name || prev.plan,
+        access: data.access || prev.access, statusLabel: data.status_label || prev.statusLabel,
+        name: data.you ? data.you.name : prev.name, email: data.you ? data.you.email : prev.email,
+      };
+      if (data.token) { a.token = data.token; a.signedOut = false; }
+      setAccount(a);
+      return a;
+    }
+
+    // First sign-in on this phone: everything already here goes up (the server matches by id, so doing it twice is
+    // harmless), then the pull brings down anything that's in the account but not on this phone.
+    function queueEverythingForAccount() {
+      const queue = getSyncQueue();
+      entries.forEach(e => queue.push({ kind: 'entry_upsert', payload: e, queuedAt: new Date().toISOString() }));
+      expenses.forEach(x => queue.push({ kind: 'expense_upsert', payload: x, queuedAt: new Date().toISOString() }));
+      Object.values(jobInfo || {}).forEach(j => {
+        if (j && j.billedThrough && (j.label || '').trim()) queue.push({ kind: 'job_billing_upsert', payload: { job: j.label.trim(), billedThrough: j.billedThrough }, queuedAt: new Date().toISOString() });
+      });
+      queue.push({ kind: 'state_put', payload: collectPhoneState(), queuedAt: new Date().toISOString() });
+      setSyncQueue(queue);
+    }
+
+    async function afterSignIn(data) {
+      const a = rememberAccount(data, { seq: 0, apiBase: apiBase(), since: new Date().toISOString() });
+      // Pull first, so what the account already has (from the old copy, or another phone) is merged into this
+      // phone before this phone's own copy goes up - a new, empty phone must never overwrite the account.
+      firstMerge = true;
+      try { await accountPull(); } finally { firstMerge = false; }
+      if (!a.uploadedAll) {
+        queueEverythingForAccount();
+        const b = getAccount(); b.uploadedAll = true; setAccount(b);
+      }
+      renderAccountCard();
+      updateSyncStatusDisplay();
+      await flushSyncQueue();
+    }
+
+    async function accountSignIn() {
+      const email = document.getElementById('acctEmail').value.trim();
+      const password = document.getElementById('acctPassword').value;
+      const msg = document.getElementById('acctMsg');
+      if (!email || !password) { msg.textContent = 'Enter your email and password.'; return; }
+      msg.textContent = 'Signing in…';
+      try {
+        const data = await accountApi('POST', '/login', { email, password, device: deviceName(), app: 'shiftlog' });
+        document.getElementById('acctPassword').value = '';
+        msg.textContent = '';
+        await afterSignIn(data);
+      } catch (e) { msg.textContent = e.message; }
+    }
+
+    async function accountLookupCode() {
+      const code = document.getElementById('acctCode').value.trim();
+      const msg = document.getElementById('acctMsg');
+      if (!code) { msg.textContent = 'Enter the invite code you were sent.'; return; }
+      msg.textContent = 'Checking the code…';
+      try {
+        const data = await accountApi('GET', '/invite/' + encodeURIComponent(code));
+        document.getElementById('acctJoinInfo').innerHTML = `Joining <strong>${escHtml(data.company)}</strong> as <strong>${escHtml(data.name)}</strong>.`;
+        document.getElementById('acctJoinName').value = data.name || '';
+        document.getElementById('acctJoinEmail').value = data.email || '';
+        document.getElementById('acctJoinStep2').style.display = 'block';
+        msg.textContent = '';
+      } catch (e) { msg.textContent = e.message; }
+    }
+
+    async function accountJoin() {
+      const msg = document.getElementById('acctMsg');
+      const body = {
+        code: document.getElementById('acctCode').value.trim(),
+        name: document.getElementById('acctJoinName').value.trim(),
+        email: document.getElementById('acctJoinEmail').value.trim(),
+        password: document.getElementById('acctJoinPassword').value,
+        device: deviceName(),
+      };
+      msg.textContent = 'Joining…';
+      try {
+        const data = await accountApi('POST', '/join', body);
+        document.getElementById('acctJoinPassword').value = '';
+        msg.textContent = '';
+        await afterSignIn(data);
+      } catch (e) { msg.textContent = e.message; }
+    }
+
+    async function accountSignOut() {
+      const a = getAccount();
+      if (!a) return;
+      const pending = getSyncQueue().length;
+      if (!confirm(pending
+        ? `${pending} change${pending === 1 ? ' has' : 's have'} not reached your company's account yet. Sign out anyway? Everything stays on this phone.`
+        : 'Sign out of your company account on this phone? Everything stays on this phone.')) return;
+      if (a.token) { try { await accountApi('POST', '/logout', {}, a.token); } catch (e) { /* signed out here either way */ } }
+      setAccount(null);
+      renderAccountCard();
+      updateSyncStatusDisplay();
+    }
+
+    function deviceName() {
+      const ua = navigator.userAgent || '';
+      const kind = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : 'Browser';
+      return `ShiftLog ${APP_VERSION} on ${kind}`;
+    }
+
+    // ---- what is sent ----
+    function stripForServer(op) {
+      const p = { ...(op.payload || {}) };
+      if (p.receipt) { p.has_receipt = true; }
+      delete p.receipt;
+      Object.keys(p).forEach(k => { if (k.startsWith('_')) delete p[k]; });
+      return { kind: op.kind, payload: p };
+    }
+
+    function collectPhoneState() {
+      const get = k => localStorage.getItem(k);
+      const logo = get('shiftlog_business_logo') || '';
+      return {
+        jobCodes, jobInfo, prepItems, invoiceItems,
+        invoices: getStoredShiftlogInvoices(),
+        settings: {
+          business_name: get('shiftlog_business_name') || '', business_address: get('shiftlog_business_address') || '',
+          invoice_footer: get('shiftlog_invoice_footer'), sales_tax_rate: get('shiftlog_sales_tax_rate') || '',
+          irs_rate_custom: get('irsRateCustom') || '', business_logo: logo.length < 250000 ? logo : '',
+        },
+        saved_at: new Date().toISOString(),
+      };
+    }
+
+    // Called whenever a setting, job detail, door code, prep list or invoice item changes. Waits a moment so a
+    // burst of typing is one change, and keeps only the newest copy in the queue.
+    function markStateChanged() {
+      if (applyingRemote || !accountConfigured()) return;
+      clearTimeout(stateTimer);
+      stateTimer = setTimeout(() => {
+        const queue = getSyncQueue().filter(op => op.kind !== 'state_put');
+        queue.push({ kind: 'state_put', payload: collectPhoneState(), queuedAt: new Date().toISOString() });
+        setSyncQueue(queue);
+        updateSyncStatusDisplay();
+        flushSyncQueue();
+      }, 1500);
+    }
+
+    // ---- push and pull ----
+    async function accountFlush() {
+      let a = getAccount();
+      if (!a || !a.token) return { flushed: 0, remaining: getSyncQueue().length, ok: false };
+      let flushed = 0;
+      let lockedSeen = false;
+      // push, in order, in batches
+      while (true) {
+        const queue = getSyncQueue();
+        if (!queue.length) break;
+        const batch = [];
+        let bytes = 0;
+        for (const op of queue) {
+          const s = stripForServer(op);
+          const size = JSON.stringify(s).length;
+          if (batch.length && (batch.length >= PUSH_BATCH || bytes + size > PUSH_MAX_BYTES)) break;
+          batch.push(s); bytes += size;
+        }
+        let res;
+        try {
+          res = await accountApi('POST', '/sync', { ops: batch, app_version: APP_VERSION }, a.token);
+        } catch (e) {
+          handleAccountError(e);
+          if (e.code === 'read_only') await accountPull();   // still allowed: the office's notes and approvals
+          return { flushed, remaining: getSyncQueue().length, ok: false };
+        }
+        (res.results || []).forEach(r => {
+          const op = batch[r.i];
+          if (r.number && op && op.kind === 'invoice_upsert') rememberInvoiceNumber(op.payload.id, r.number);
+          if (r.locked) lockedSeen = true;
+        });
+        // the batch is answered: drop exactly those ops (new ones may have been added meanwhile)
+        const now = getSyncQueue();
+        now.splice(0, batch.length);
+        setSyncQueue(now);
+        flushed += batch.length;
+        a = getAccount() || a;
+        if (a.access === 'read_only') { a.access = 'full'; setAccount(a); renderAccountCard(); }
+      }
+      // An entry the office already approved (locked) came back refused: re-read everything so this phone shows
+      // the approved version again.
+      if (lockedSeen) { a = getAccount(); a.seq = 0; setAccount(a); }
+      await accountPull();
+      await syncReceiptPhotos();
+      return { flushed, remaining: getSyncQueue().length, ok: true };
+    }
+
+    async function accountPull() {
+      let a = getAccount();
+      if (!a || !a.token) return;
+      for (let guard = 0; guard < 50; guard++) {
+        let res;
+        try {
+          res = await accountApi('GET', '/sync?since=' + (a.seq || 0), null, a.token);
+        } catch (e) { handleAccountError(e); return; }
+        await applyPulledRecords(res.records || []);
+        a = getAccount() || a;
+        a.seq = res.seq; a.access = res.access || a.access; a.company = res.company || a.company;
+        a.statusLabel = res.status_label || a.statusLabel; a.plan = res.plan_name || a.plan;
+        if (a.access === 'full') a.readOnlyMessage = '';
+        a.lastSync = new Date().toISOString();
+        setAccount(a);
+        if (!res.more) break;
+      }
+      renderAccountCard();
+    }
+
+    function handleAccountError(e) {
+      const a = getAccount();
+      if (!a) return;
+      if (e.status === 401) {
+        a.token = ''; a.signedOut = true; setAccount(a);
+      } else if (e.code === 'read_only') {
+        a.access = 'read_only'; a.readOnlyMessage = e.message; setAccount(a);
+      } else if (!e.offline) {
+        console.warn('Account sync paused:', e.message);
+      }
+      renderAccountCard();
+    }
+
+    function rememberInvoiceNumber(id, number) {
+      const list = getStoredShiftlogInvoices();
+      const rec = list.find(x => String(x.id) === String(id));
+      if (rec && rec.number !== number) { rec.number = number; setStoredShiftlogInvoices(list); }
+    }
+
+    function pendingKeys() {
+      const keys = new Set();
+      getSyncQueue().forEach(op => {
+        const kind = op.kind.split('_')[0] === 'job' ? 'job_billing' : op.kind.split('_')[0];
+        if (kind === 'state') keys.add('state:phone');
+        else if (kind === 'job_billing') keys.add('job_billing:' + normalizeJobKey(op.payload && op.payload.job));
+        else if (op.payload && op.payload.id !== undefined) keys.add(kind + ':' + String(op.payload.id));
+      });
+      return keys;
+    }
+
+    async function applyPulledRecords(records) {
+      if (!records.length) return;
+      const pending = pendingKeys();
+      let changedEntries = false, changedExpenses = false, changedInfo = false, changedState = false;
+      const statusOf = r => ({ _status: r.status, _note: r.note || '', _locked: !!r.locked });
+      for (const r of records) {
+        const key = r.kind + ':' + r.uid;
+        if (r.kind === 'entry' || r.kind === 'expense') {
+          const list = r.kind === 'entry' ? entries : expenses;
+          const idx = list.findIndex(x => String(x.id) === r.uid);
+          if (pending.has(key)) {
+            // our own newer change is on its way up; only take the office's status
+            if (idx !== -1) Object.assign(list[idx], statusOf(r));
+          } else if (r.deleted) {
+            if (idx !== -1) list.splice(idx, 1);
+          } else {
+            const local = idx !== -1 ? list[idx] : null;
+            const rec = { ...r.data, ...statusOf(r) };
+            delete rec.has_receipt;
+            if (local && local.receipt) { rec.receipt = local.receipt; rec._receiptSent = local._receiptSent; }
+            if (r.receipt) rec._receiptInAccount = true; else delete rec._receiptInAccount;
+            if (typeof rec.id === 'string' && /^\d+$/.test(rec.id)) rec.id = parseInt(rec.id, 10);
+            if (idx !== -1) list[idx] = rec; else list.push(rec);
+          }
+          if (r.kind === 'entry') changedEntries = true; else changedExpenses = true;
+        } else if (r.kind === 'invoice') {
+          const list = getStoredShiftlogInvoices();
+          let rec = list.find(x => String(x.id) === r.uid);
+          if (!rec && !r.deleted && r.data && r.data.job) {
+            rec = { id: /^\d+$/.test(r.uid) ? parseInt(r.uid, 10) : r.uid, job: r.data.job, startDate: r.data.startDate, endDate: r.data.endDate, createdAt: new Date().toISOString() };
+            list.push(rec);
+          }
+          if (rec) { rec.number = r.number || rec.number; rec.status = r.status; setStoredShiftlogInvoices(list); }
+        } else if (r.kind === 'job_billing') {
+          if (pending.has('job_billing:' + r.uid) || !r.data || !r.data.job) continue;
+          const k = normalizeJobKey(r.data.job);
+          if (!jobInfo[k]) jobInfo[k] = { label: r.data.job.trim(), customer: '', phone: '', email: '', address: '', paymentLink: '', billedThrough: '' };
+          if ((r.data.billedThrough || '') > (jobInfo[k].billedThrough || '')) { jobInfo[k].billedThrough = r.data.billedThrough; changedInfo = true; }
+        } else if (r.kind === 'profile') {
+          if (r.data) { localStorage.setItem('shiftlog_company_profile', JSON.stringify(r.data)); changedState = true; }
+        } else if (r.kind === 'state') {
+          if (pending.has('state:phone') || !r.data) continue;
+          applyPhoneState(r.data);
+          changedState = true;
+        }
+      }
+      applyingRemote = true;
+      try {
+        if (changedEntries) {
+          entries.sort((x, y) => (x.id > y.id ? 1 : -1));
+          await setStoredData(entries);
+        }
+        if (changedExpenses) await setStoredExpenses(expenses);
+        if (changedInfo || changedState) await setStoredJobInfo(jobInfo);
+      } finally { applyingRemote = false; }
+      if (changedEntries || changedExpenses || changedInfo || changedState) refreshAfterPull();
+    }
+
+    function applyPhoneState(s) {
+      applyingRemote = true;
+      try {
+        // On the first sign-in the two copies are merged; after that the account's copy is the newest one.
+        if (s.jobCodes && typeof s.jobCodes === 'object') { jobCodes = firstMerge ? { ...jobCodes, ...s.jobCodes } : s.jobCodes; localStorage.setItem(JOBCODES_KEY, JSON.stringify(jobCodes)); }
+        if (s.jobInfo && typeof s.jobInfo === 'object') {
+          // keep the later "billed through" date of the two
+          Object.keys(jobInfo || {}).forEach(k => {
+            if (s.jobInfo[k] && (jobInfo[k].billedThrough || '') > (s.jobInfo[k].billedThrough || '')) s.jobInfo[k].billedThrough = jobInfo[k].billedThrough;
+          });
+          jobInfo = { ...jobInfo, ...s.jobInfo };
+        }
+        if (s.prepItems && typeof s.prepItems === 'object') { prepItems = firstMerge ? { ...prepItems, ...s.prepItems } : s.prepItems; localStorage.setItem(PREPITEMS_KEY, JSON.stringify(prepItems)); }
+        if (Array.isArray(s.invoiceItems)) {
+          invoiceItems = firstMerge ? [...s.invoiceItems, ...invoiceItems.filter(x => !s.invoiceItems.some(y => String(y.id) === String(x.id)))] : s.invoiceItems;
+          localStorage.setItem(INVOICEITEMS_KEY, JSON.stringify(invoiceItems));
+        }
+        if (Array.isArray(s.invoices)) {
+          const mine = getStoredShiftlogInvoices();
+          s.invoices.forEach(x => { if (!mine.some(m => String(m.id) === String(x.id))) mine.push(x); });
+          localStorage.setItem(SHIFTLOG_INVOICES_KEY, JSON.stringify(mine));
+        }
+        const st = s.settings || {};
+        const put = (k, v) => { if (v === null || v === undefined) return; if (v === '') { if (!firstMerge) localStorage.removeItem(k); } else localStorage.setItem(k, v); };
+        put('shiftlog_business_name', st.business_name);
+        put('shiftlog_business_address', st.business_address);
+        if (st.invoice_footer !== null && st.invoice_footer !== undefined) localStorage.setItem('shiftlog_invoice_footer', st.invoice_footer);
+        put('shiftlog_sales_tax_rate', st.sales_tax_rate);
+        put('irsRateCustom', st.irs_rate_custom);
+        if (st.business_logo) localStorage.setItem('shiftlog_business_logo', st.business_logo);
+      } finally { applyingRemote = false; }
+    }
+
+    function refreshAfterPull() {
+      try {
+        const set = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
+        set('businessName', localStorage.getItem('shiftlog_business_name') || '');
+        set('businessAddress', localStorage.getItem('shiftlog_business_address') || '');
+        const f = localStorage.getItem('shiftlog_invoice_footer');
+        set('invoiceFooterMessage', f === null ? DEFAULT_INVOICE_FOOTER : f);
+        set('salesTaxRate', localStorage.getItem('shiftlog_sales_tax_rate') || '7');
+        renderBusinessLogoPreview();
+        loadIrsRate();
+        autoFillPreviousMileage();
+        updateJobDatalist();
+        renderRecentJobs();
+        updateCodeDatalist();
+        renderManageCodes();
+        renderManageJobInfo();
+        updateCustomerDatalist();
+        renderPrepList();
+        renderPrepReminder();
+        renderSummaries();
+        updateVendorDatalist();
+        renderExpenses();
+        renderExpenseSummary();
+        renderInvoiceItems();
+      } catch (e) { console.warn('refresh after sync', e); }
+    }
+
+    // ---- receipt photos (step 4) ----
+    // A photo goes up after its expense (the account needs the expense first), straight from the phone's copy;
+    // a new phone, or the move from the old copy, gets the photos back. Nothing here blocks: a photo that can't
+    // go now is tried again at the next sync.
+    function photoPrint(s) {
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i += Math.max(1, Math.floor(s.length / 4096))) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return s.length + ':' + (h >>> 0).toString(16);
+    }
+    function dataUrlToBytes(u) {
+      const m = /^data:([^;]+);base64,(.*)$/.exec(u || '');
+      if (!m) return null;
+      const bin = atob(m[2]);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return { type: m[1], bytes: out };
+    }
+    function bytesToDataUrl(buf, type) {
+      const b = new Uint8Array(buf);
+      let s = '';
+      for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+      return `data:${type};base64,${btoa(s)}`;
+    }
+    function receiptsWaiting() {
+      if (!accountConfigured()) return 0;
+      return expenses.filter(x => x.receipt && x._receiptSent !== photoPrint(x.receipt)).length;
+    }
+    async function syncReceiptPhotos() {
+      const a = getAccount();
+      if (!a || !a.token || a.access === 'read_only' || navigator.onLine === false) return;
+      let changed = false;
+      for (const x of expenses) {
+        if (!x.receipt || x._receiptSent === photoPrint(x.receipt)) continue;
+        const pic = dataUrlToBytes(x.receipt);
+        if (!pic) continue;
+        try {
+          const resp = await fetch(apiBase() + '/api/teams/receipts/expense/' + encodeURIComponent(x.id), {
+            method: 'PUT', headers: { 'Authorization': 'Bearer ' + a.token, 'Content-Type': pic.type }, body: pic.bytes });
+          if (resp.ok || resp.status === 409 && (await resp.clone().json().catch(() => ({}))).error === 'locked') {
+            x._receiptSent = photoPrint(x.receipt); changed = true;
+          } else if (resp.status === 401 || resp.status === 403) { break; }
+        } catch (e) { break; }   // no signal: next time
+      }
+      // photos in the account that this phone doesn't have (a new phone, the old copy's photos)
+      let fetched = 0;
+      for (const x of expenses) {
+        if (fetched >= 20) break;
+        if (x.receipt || !x._receiptInAccount) continue;
+        try {
+          const resp = await fetch(apiBase() + '/api/teams/receipts/me/expense/' + encodeURIComponent(x.id), { headers: { 'Authorization': 'Bearer ' + a.token } });
+          if (!resp.ok) continue;
+          const type = resp.headers.get('content-type') || 'image/jpeg';
+          x.receipt = bytesToDataUrl(await resp.arrayBuffer(), type);
+          x._receiptSent = photoPrint(x.receipt);
+          fetched++; changed = true;
+        } catch (e) { break; }
+      }
+      if (changed) {
+        applyingRemote = true;
+        try { await setStoredExpenses(expenses); } finally { applyingRemote = false; }
+        renderExpenses();
+      }
+      updateSyncStatusDisplay();
+    }
+
+    // ---- what the office did, shown on the phone ----
+    function entryStatusBadge(e) {
+      if (!accountConfigured() && !e._status) return '';
+      if (e._status === 'sent_back') return `<div class="sl-status sl-sent-back">↩ Sent back${e._note ? ': ' + escHtml(e._note) : ''} <span class="sl-hint">- edit it and it goes back for review</span></div>`;
+      if (e._locked && e._status === 'approved') return `<div class="sl-status sl-approved">🔒 Approved</div>`;
+      if (e._status === 'waiting') return `<div class="sl-status sl-waiting">Waiting for approval</div>`;
+      return '';
+    }
+    function lockedMessage(what) {
+      alert(`This ${what} was approved by the office and is locked so payroll doesn't change. Ask the office to unlock it if it needs a fix.`);
+    }
+
+    // ---- the settings card ----
+    function renderAccountCard() {
+      const box = document.getElementById('accountCard');
+      if (!box) return;
+      const a = getAccount();
+      const signedIn = !!(a && a.token);
+      document.getElementById('acctSignedOut').style.display = signedIn ? 'none' : 'block';
+      document.getElementById('acctSignedIn').style.display = signedIn ? 'block' : 'none';
+      const turso = document.getElementById('tursoSection');
+      if (turso) turso.style.display = signedIn ? 'none' : 'block';
+      const banner = document.getElementById('acctBanner');
+      if (banner) banner.style.display = (!signedIn && onBoxridgeSite() && localStorage.getItem('shiftlog_account_banner_off') !== '1') || (a && a.signedOut) ? 'flex' : 'none';
+      const was = document.getElementById('acctWasSignedIn');
+      if (was) was.style.display = a && a.signedOut ? 'block' : 'none';
+      if (signedIn) {
+        const roleName = { owner: 'Owner', office: 'Office', worker: 'Crew' }[a.role] || '';
+        document.getElementById('acctSummary').innerHTML =
+          `<strong>${escHtml(a.company || '')}</strong><br/>${escHtml(a.name || '')}${roleName ? ' · ' + roleName : ''} · ${escHtml(a.email || '')}`
+          + `<br/><span class="sl-hint">${escHtml(a.plan || '')} plan${a.statusLabel ? ' · ' + escHtml(a.statusLabel) : ''}</span>`;
+        const ro = document.getElementById('acctReadOnly');
+        ro.style.display = a.access === 'read_only' ? 'block' : 'none';
+        ro.textContent = a.readOnlyMessage || 'Your company\'s account is read-only right now. Everything stays on this phone and syncs once it\'s turned back on.';
+        const moved = document.getElementById('acctMoved');
+        if (moved) moved.style.display = onBoxridgeSite() ? 'none' : 'block';
+        const pn = document.getElementById('acctProfileNote');
+        if (pn) pn.style.display = companyProfile() ? 'block' : 'none';
+        const last = document.getElementById('acctLastSync');
+        if (last) last.textContent = a.lastSync ? 'Last synced ' + fmtUSDateTime(a.lastSync) : '';
+      }
+    }
+
+    function fmtUSDateTime(iso) {
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      const p = n => String(n).padStart(2, '0');
+      let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+      return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()} ${h}:${p(d.getMinutes())} ${ap}`;
+    }
+
+    function openAccountFromBanner() {
+      const drawer = document.getElementById('settingsDrawer');
+      if (!drawer.classList.contains('open')) toggleMenu();
+      document.getElementById('accountCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => { const c = document.getElementById('acctCode'); if (c) c.focus(); }, 300);
+    }
+    function dismissAccountBanner() {
+      localStorage.setItem('shiftlog_account_banner_off', '1');
+      renderAccountCard();
+    }
+
+    function showAccountTab(which) {
+      document.getElementById('acctTabCode').classList.toggle('active', which === 'code');
+      document.getElementById('acctTabLogin').classList.toggle('active', which === 'login');
+      document.getElementById('acctCodeForm').style.display = which === 'code' ? 'block' : 'none';
+      document.getElementById('acctLoginForm').style.display = which === 'login' ? 'block' : 'none';
+      document.getElementById('acctMsg').textContent = '';
+    }
+
+    function setupBoxridgeHome() {
+      if (!onBoxridgeSite()) return;
+      const link = document.createElement('link');
+      link.rel = 'apple-touch-icon'; link.href = 'icon-180.png';
+      document.head.appendChild(link);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js', { scope: './' }).catch(e => console.warn('offline cache not set up', e));
+      }
+    }
+    // ==================== end Boxridge account ====================
+
 
     // Jobs worked in the last 7 days (today + previous 6 days), most recent first
     function getRecentJobs() {
@@ -3989,6 +4781,8 @@
         queueAllExistingDataForSync();
         localStorage.setItem(SYNC_BACKFILLED_KEY, 'true');
       }
+      setupBoxridgeHome();
+      renderAccountCard();
       updateSyncStatusDisplay();
       flushSyncQueue();
     }
@@ -4123,6 +4917,7 @@
 
       if (editingId) {
         const index = entries.findIndex(item => item.id == editingId);
+        if (index !== -1 && entries[index]._locked) { lockedMessage('entry'); return; }
         if (index !== -1) {
           const oldE = entries[index];
           oldBaseline = parseFloat(oldE.endMiles) || parseFloat(oldE.startMiles) || null;
@@ -4226,6 +5021,7 @@
     function editEntry(id) {
       const entry = entries.find(e => e.id == id);
       if (!entry) return;
+      if (entry._locked) { lockedMessage('entry'); return; }
 
       document.getElementById('editingId').value = entry.id;
       document.getElementById('entryDate').value = entry.date;
@@ -4426,6 +5222,7 @@
             <td>
               <strong>${e.job}</strong><br/>
               ${e.code ? `<span class="code-badge">${e.code}</span>` : ''}
+              ${entryStatusBadge(e)}
               
               ${hasDetails ? `
                 <details class="entry-details no-print">
@@ -4457,6 +5254,8 @@
     }
 
     async function deleteEntry(id) {
+      const lockedEntry = entries.find(e => e.id == id);
+      if (lockedEntry && lockedEntry._locked) { lockedMessage('entry'); return; }
       if (confirm('Delete this entry? You can restore it from Trash (in Settings) later.')) {
         const idx = entries.findIndex(e => e.id == id);
         if (idx !== -1) {
@@ -4534,19 +5333,19 @@
 
     function saveBusinessName() {
       const value = document.getElementById('businessName').value.trim();
-      localStorage.setItem('shiftlog_business_name', value);
+      localStorage.setItem('shiftlog_business_name', value); markStateChanged();
     }
 
     function saveBusinessAddress() {
       const value = document.getElementById('businessAddress').value.trim();
-      localStorage.setItem('shiftlog_business_address', value);
+      localStorage.setItem('shiftlog_business_address', value); markStateChanged();
     }
 
     const DEFAULT_INVOICE_FOOTER = 'Thank you for using Icon Media Asheville LLC. We appreciate your business.';
 
     function saveInvoiceFooterMessage() {
       const value = document.getElementById('invoiceFooterMessage').value.trim();
-      localStorage.setItem('shiftlog_invoice_footer', value);
+      localStorage.setItem('shiftlog_invoice_footer', value); markStateChanged();
     }
 
     // Business logo for the invoice header - reuses the same compressImage()
@@ -4558,7 +5357,7 @@
 
       try {
         const dataUrl = await compressImage(file, 400, 0.85);
-        localStorage.setItem('shiftlog_business_logo', dataUrl);
+        localStorage.setItem('shiftlog_business_logo', dataUrl); markStateChanged();
         renderBusinessLogoPreview();
       } catch (err) {
         console.warn('Could not process logo image', err);
@@ -4662,13 +5461,8 @@
         laborTotal, mileageTotal, grandTotal,
         info: getJobInfo(job),
         customerName: getJobInfo(job).customer || job,
-        businessName: localStorage.getItem('shiftlog_business_name') || '',
-        businessAddress: localStorage.getItem('shiftlog_business_address') || '',
-        businessLogo: localStorage.getItem('shiftlog_business_logo') || '',
-        invoiceFooter: (() => {
-          const stored = localStorage.getItem('shiftlog_invoice_footer');
-          return stored === null ? DEFAULT_INVOICE_FOOTER : stored;
-        })()
+        ...invoiceBusinessDetails(),
+        ...savedInvoiceFor(job, startDate, endDate)
       };
     }
 
@@ -4692,6 +5486,7 @@
 
     function setStoredShiftlogInvoices(list) {
       localStorage.setItem(SHIFTLOG_INVOICES_KEY, JSON.stringify(list));
+      markStateChanged();
     }
 
     function findOrCreateInvoiceId(job, startDate, endDate) {
@@ -4700,7 +5495,7 @@
       const existing = list.find(x => normalizeJobKey(x.job) === key && x.startDate === startDate && x.endDate === endDate);
       if (existing) return existing.id;
 
-      const newRecord = { id: Date.now(), job, startDate, endDate, createdAt: new Date().toISOString() };
+      const newRecord = { id: Date.now(), job, startDate, endDate, createdAt: new Date().toISOString(), invoiceDate: localISODate() };
       list.push(newRecord);
       setStoredShiftlogInvoices(list);
       return newRecord.id;
@@ -4789,8 +5584,8 @@
     // drafts in LedgerBox, ready to review, attach a payment link to, or
     // send from there.
     function saveAndSyncInvoice() {
-      if (!tursoConfigured()) {
-        alert('Set up sync in Settings first (the same Turso Database URL and Auth Token used in LedgerBox), then try again.');
+      if (!syncEnabled()) {
+        alert('Set up sync in Settings first: sign in to your Boxridge account, or enter the Turso Database URL and Auth Token used in LedgerBox. Then try again.');
         return;
       }
       const data = getInvoiceData(true);
@@ -4808,6 +5603,7 @@
 
       enqueueSyncOp('invoice_upsert', {
         id: invoiceId,
+        invoiceDate: savedInvoiceFor(data.job, data.startDate, data.endDate).invoiceDate || localISODate(),
         job: data.job,
         customerName: data.customerName,
         startDate: data.startDate,
@@ -4825,7 +5621,7 @@
 
       const confirmEl = document.getElementById('invoiceSyncConfirm');
       if (confirmEl) {
-        confirmEl.innerText = '✅ Saved — will appear in LedgerBox next time it syncs';
+        confirmEl.innerText = accountConfigured() ? '✅ Saved to your company account (it gets its invoice number when it syncs)' : '✅ Saved — will appear in LedgerBox next time it syncs';
         confirmEl.style.display = 'block';
         setTimeout(() => { confirmEl.style.display = 'none'; }, 4000);
       }
@@ -4836,120 +5632,74 @@
     // for the on-screen preview (generateInvoice()) and for PDF generation
     // (buildInvoicePdfBlob()), so the two can never drift apart or show
     // different totals/layout from the same underlying data.
+    // v3.48.2 (step 4): the same invoice as Ledger's - the same layout (logo, INVOICE, business details, invoice
+    // number and date, Bill To with job and job site, Description / Qty / Rate / Amount, Subtotal / Tax / Total,
+    // footer) and the SAME lines Ledger receives when the invoice is saved and synced (buildInvoiceLineItemsForSync),
+    // so a customer sees one invoice whichever app made it. Inline styles, like Ledger's, so the PDF matches too.
     function buildInvoiceHtmlString(data) {
-      const laborRows = data.rangeEntries.map(e => {
-        const hrs = parseFloat(e.hours || 0);
-        const amount = (hrs * data.rate).toFixed(2);
-        return `<tr>
-          <td>${fmtUS(e.date)}</td>
-          <td>${(e.desc || '').replace(/\n/g, '<br/>') || '—'}</td>
-          <td style="text-align:right;">${e.hours}</td>
-          <td style="text-align:right;">$${data.rate.toFixed(2)}</td>
-          <td style="text-align:right;">$${amount}</td>
-        </tr>`;
-      }).join('');
-
-      const expenseRowsHtml = data.includeExpenses && data.rangeExpenses.length
-        ? `
-        <div class="table-responsive" style="margin-top:12px;">
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Item</th>
-                <th style="text-align:right;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.rangeExpenses.map(x => `<tr>
-                <td>${fmtUS(x.date)}</td>
-                <td>${x.category}${x.vendor ? ` (${x.vendor})` : ''}${x.note ? ` — ${x.note}` : ''}</td>
-                <td style="text-align:right;">$${parseFloat(x.amount).toFixed(2)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`
-        : '';
-
-      const itemRowsHtml = data.includeItems && data.rangeItems.length
-        ? `
-        <div class="table-responsive" style="margin-top:12px;">
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Item</th>
-                <th style="text-align:right;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.rangeItems.map(x => `<tr>
-                <td>${fmtUS(x.date)}</td>
-                <td>${x.desc}${x.taxable ? '' : ' <span style="color:#94a3b8;">(no tax)</span>'}</td>
-                <td style="text-align:right;">$${parseFloat(x.price).toFixed(2)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`
-        : '';
-
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const money = v => '$' + (Math.round((parseFloat(v) || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const lines = buildInvoiceLineItemsForSync(data);
+      const totals = computeInvoiceSyncTotals(data);
+      const th = 'padding:8px; font-size:11px; text-transform:uppercase; color:#64748b;';
+      const td = 'padding:8px; border-bottom:1px solid #ddd; font-size:13px;';
+      const rows = lines.map(li => `<tr>
+          <td style="${td}">${esc(li.description)}</td>
+          <td style="${td} text-align:right;">${(Math.round(li.quantity * 100) / 100).toString()}</td>
+          <td style="${td} text-align:right;">${money(li.rate)}</td>
+          <td style="${td} text-align:right;">${money(li.amount)}</td></tr>`).join('')
+        || '<tr><td colspan="4" style="padding:16px; text-align:center; color:#94a3b8;">No line items</td></tr>';
+      const biz = [[data.businessName, '14px', ''], [data.businessEmail, '12px', 'color:#64748b;'], [data.businessPhone, '12px', 'color:#64748b;']]
+        .filter(x => x[0]).map(([v, size, color]) => `<div style="font-size:${size}; margin-top:4px; ${color}">${esc(v)}</div>`).join('')
+        + (data.businessAddress ? `<div style="font-size:12px; margin-top:4px; color:#64748b; white-space:pre-line;">${esc(data.businessAddress)}</div>` : '');
+      const logo = data.businessLogo ? `<img src="${esc(data.businessLogo)}" style="max-width:220px; max-height:60px; margin-bottom:6px; display:block;" />` : '';
+      const cust = [data.info.email, data.info.phone].filter(Boolean).map(v => `<div style="font-size:12px; color:#475569;">${esc(v)}</div>`).join('')
+        + (data.job ? `<div style="font-size:12px; color:#475569; margin-top:4px;">Job: ${esc(data.job)}</div>` : '')
+        + (data.info.address ? `<div style="font-size:12px; color:#475569;">Job site: ${esc(data.info.address)}</div>` : '');
+      const tax = totals.taxAmount ? `<tr><td style="padding:4px 0;">Tax (${data.taxRate}%)</td><td align="right">${money(totals.taxAmount)}</td></tr>` : '';
+      const notMileage = !data.includeMileage && data.totalMiles
+        ? `<div style="margin-top:6px; font-size:11px; color:#94a3b8;" class="no-print">Mileage driven: ${data.totalMiles.toFixed(1)} mi (not billed)</div>` : '';
       return `
-        <div class="invoice-header">
-          <div>
-            ${data.businessLogo ? `<img src="${data.businessLogo}" style="max-height:60px; max-width:220px; margin-bottom:6px; display:block;" />` : ''}
-            <h2 style="margin:0;">INVOICE</h2>
-            ${data.businessName ? `<div>${data.businessName}</div>` : ''}
-            ${data.businessAddress ? `<div style="white-space: pre-line;">${data.businessAddress}</div>` : ''}
+        <div style="font-family: Arial, sans-serif; color:#1e293b; background:#ffffff;">
+          <table width="100%" style="border-collapse:collapse;"><tr>
+            <td style="vertical-align:top;">
+              ${logo}
+              <div style="font-size:22px; font-weight:700; color:#1e293b;">INVOICE</div>
+              ${biz}
+            </td>
+            <td align="right" style="vertical-align:top;">
+              ${data.invoiceNumber ? `<div style="font-size:14px;"><b>Invoice #${esc(data.invoiceNumber)}</b></div>` : ''}
+              <div style="font-size:12px; color:#64748b;">Date: ${fmtUS(data.invoiceDate || localISODate())}</div>
+              <div style="font-size:12px; color:#64748b;">Period: ${fmtUS(data.startDate)} to ${fmtUS(data.endDate)}</div>
+            </td>
+          </tr></table>
+          <div style="margin-top:24px; padding-top:12px; border-top:2px solid #1e293b;">
+            <div style="font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700;">Bill To</div>
+            <div style="font-size:14px; font-weight:600; margin-top:4px;">${esc(data.customerName) || '&mdash;'}</div>
+            ${cust}
           </div>
-          <div style="text-align:right; font-size:0.85rem; color:#64748b;">
-            <div>Date: ${fmtUS(localISODate())}</div>
-            <div>Period: ${fmtUS(data.startDate)} to ${fmtUS(data.endDate)}</div>
-          </div>
-        </div>
-        <div class="invoice-bill-to">
-          <strong>Bill To:</strong> ${data.customerName}
-          ${data.customerName !== data.job ? `<div>Job: ${data.job}</div>` : ''}
-          ${data.info.address ? `<div>${data.info.address}</div>` : ''}
-          ${data.info.phone ? `<div>${data.info.phone}</div>` : ''}
-          ${data.info.email ? `<div>${data.info.email}</div>` : ''}
-        </div>
-        ${data.rangeEntries.length ? `
-        <div class="table-responsive">
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th style="text-align:right;">Hours</th>
-                <th style="text-align:right;">Rate</th>
-                <th style="text-align:right;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>${laborRows}</tbody>
+          <table width="100%" style="margin-top:20px; border-collapse:collapse;">
+            <thead><tr style="background:#f1f5f9;">
+              <th style="text-align:left; ${th}">Description</th><th style="text-align:right; ${th}">Qty</th>
+              <th style="text-align:right; ${th}">Rate</th><th style="text-align:right; ${th}">Amount</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
           </table>
-        </div>` : ''}
-        ${data.includeItems && data.rangeItems.length ? `<div style="font-weight:700; color:#9a3412; font-size:0.85rem; margin-top:12px;">Billable Items</div>${itemRowsHtml}` : ''}
-        ${data.includeExpenses && data.rangeExpenses.length ? `<div style="font-weight:700; color:#9a3412; font-size:0.85rem; margin-top:12px;">Materials & Expenses</div>${expenseRowsHtml}` : ''}
-        <div class="invoice-totals">
-          ${data.rangeEntries.length ? `<div>Total Hours: ${data.totalHours.toFixed(2)}</div>` : ''}
-          ${data.rangeEntries.length ? `<div>Labor Subtotal: $${data.laborTotal.toFixed(2)}</div>` : ''}
-          ${data.includeMileage
-            ? `<div>Mileage (${data.totalMiles.toFixed(1)} mi @ $${data.mileageRate.toFixed(3)}/mi): $${data.mileageTotal.toFixed(2)}</div>`
-            : (data.totalMiles ? `<div style="color:#94a3b8;">Mileage driven: ${data.totalMiles.toFixed(1)} mi (not billed)</div>` : '')}
-          ${data.includeItems && data.rangeItems.length ? `
-            <div>Items Subtotal: $${data.itemsSubtotal.toFixed(2)}</div>
-            ${data.itemsTaxAmount > 0 ? `<div>Sales Tax (${data.taxRate}% on $${data.itemsTaxableSubtotal.toFixed(2)}): $${data.itemsTaxAmount.toFixed(2)}</div>` : ''}
-          ` : ''}
-          ${data.includeExpenses && data.rangeExpenses.length
-            ? `<div>Materials & Expenses Subtotal: $${data.expensesTotal.toFixed(2)}</div>`
-            : (data.rangeExpenses.length ? `<div style="color:#94a3b8;">Expenses logged: $${data.expensesTotal.toFixed(2)} (not billed)</div>` : '')}
-          <div class="invoice-grand-total">Total Due: $${data.grandTotal.toFixed(2)}</div>
+          <table width="100%" style="margin-top:16px;"><tr><td></td><td align="right" style="width:240px;">
+            <table width="100%">
+              <tr><td style="padding:4px 0;">Subtotal</td><td align="right">${money(totals.subtotal)}</td></tr>
+              ${tax}
+              <tr><td style="padding:8px 0; border-top:2px solid #1e293b; font-weight:700; font-size:16px;">Total</td>
+                  <td align="right" style="padding:8px 0; border-top:2px solid #1e293b; font-weight:700; font-size:16px;">${money(totals.total)}</td></tr>
+            </table>
+          </td></tr></table>
+          ${notMileage}
+          ${data.info.paymentLink ? `
+          <div style="text-align:center; margin-top:16px;">
+            <a href="${esc(data.info.paymentLink)}" target="_blank" rel="noopener" style="display:inline-block; background:#635bff; color:#ffffff; font-weight:700; text-decoration:none; padding:12px 28px; border-radius:8px;">💳 Pay Now</a>
+          </div>` : ''}
+          ${data.invoiceFooter ? `<div style="margin-top:24px; padding-top:14px; border-top:1px solid #e2e8f0; text-align:center; font-size:12px; color:#64748b; font-style:italic;">${esc(data.invoiceFooter)}</div>` : ''}
         </div>
-        ${data.info.paymentLink ? `
-        <div style="text-align:center; margin-top:16px;">
-          <a href="${data.info.paymentLink}" target="_blank" rel="noopener" class="btn-submit" style="display:inline-block; width:auto; text-decoration:none; padding:12px 28px;">💳 Pay Now</a>
-        </div>` : ''}
-        ${data.invoiceFooter ? `<div class="invoice-footer-message">${data.invoiceFooter}</div>` : ''}
       `;
     }
 
