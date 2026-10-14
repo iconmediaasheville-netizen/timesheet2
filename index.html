@@ -919,6 +919,10 @@
     .list-range button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .list-range .count { margin-left: auto; }
     .list-more { text-align: center; margin: 8px 0 0; }
+    .photo-btns { display: flex; gap: 8px; margin-top: 6px; }
+    .photo-btn { flex: 1.4; padding: 12px 10px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+    .photo-btn-alt { flex: 1; background: #f8fafc; color: #334155; border: 1px solid var(--border); font-weight: 600; }
+    .quick-receipt { margin-left: auto; margin-right: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
     .list-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 10px 12px;
       background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; font-weight: 600; font-size: 0.92rem; color: #334155; cursor: pointer; }
     .list-more button { background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.88rem; }
@@ -947,8 +951,9 @@
       <div>
         <h1>ShiftLog</h1>
         <div id="syncStatus" class="sync-status">Syncing...</div>
-        <div class="app-version no-print">v3.48.3 · <button type="button" onclick="toggleChangelog()">What's new</button> · <a href="https://boxridgesoftware.com/guides/ledger/user-guide#phone-setup" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600;">User guide</a></div>
+        <div class="app-version no-print">v3.48.5 · <button type="button" onclick="toggleChangelog()">What's new</button> · <a href="https://boxridgesoftware.com/guides/ledger/user-guide#phone-setup" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600;">User guide</a></div>
       </div>
+      <button type="button" class="quick-receipt no-print" onclick="quickReceipt()" aria-label="Take a receipt photo">📷 Receipt</button>
       <button type="button" class="hamburger-btn no-print" onclick="toggleMenu()" aria-label="Toggle Settings">
         ☰
         <span id="hamburgerBadge" class="hamburger-badge" style="display: none;"></span>
@@ -971,6 +976,16 @@
     <!-- Version / Changelog Panel -->
     <div id="changelogPanel" class="changelog-panel no-print">
       <div class="changelog-entry">
+        <div class="changelog-version">v3.48.5</div>
+        <ul>
+          <li>📷 Receipt button at the top: opens the camera straight away, then takes you to the expense with the photo attached; type the amount and Add Expense</li>
+          <li>Expenses and material costs have a big "📷 Take Receipt Photo" button (straight to the camera) and "🖼️ From Photos" for a picture you already took</li>
+        </ul>
+        <div class="changelog-version">v3.48.4</div>
+        <ul>
+          <li>The LedgerBox database connection (URL and token) is no longer out in the open in Settings: once it's set up you see "Connected to …" and Sync Now. Changing it takes "Change connection…" and a confirm, it's only saved with Save connection after checking that it works, and the token is never shown again</li>
+          <li>On boxridgesoftware.com the own-database option is hidden (sign in to your Boxridge account instead)</li>
+        </ul>
         <div class="changelog-version">v3.48.3</div>
         <ul>
           <li>The expense and billable-item lists are folded away under "Expense list" and "Item list", so the page doesn't keep growing. Tap to open; it shows the last 7 days, with Last 30 days and All buttons (remembered on this phone). Totals still count everything</li>
@@ -1387,24 +1402,36 @@
       <button type="button" class="btn-secondary" onclick="emptyTrash()" style="margin-top: 6px;">Empty Trash</button>
 
       <div id="tursoSection">
-      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">☁️ Sync to LedgerBox (your own Turso database)</h3>
-      <div class="prep-empty" style="margin-bottom: 8px;">
-        Keeps your time, mileage, and expense entries in sync with the LedgerBox desktop app automatically — no more exporting/importing CSVs by hand. ShiftLog still works fully offline; anything added while offline just syncs the next time you have a connection. Receipt photos stay on your phone and are not synced.
+      <h3 style="color: #9a3412; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">☁️ Sync to LedgerBox (your own database)</h3>
+      <div id="tursoOn" style="display:none;">
+        <div class="acct-box" id="tursoConnected"></div>
+        <div id="syncStatusRow" style="display:flex; align-items:center; gap:10px; margin-top: 8px;">
+          <span id="syncStatusText" class="prep-empty" style="margin-bottom:0; flex:1;">Not configured</span>
+          <button type="button" class="btn-secondary" onclick="manualSyncNow()">Sync Now</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Turso Database URL</label>
-        <input type="text" id="tursoUrl" placeholder="libsql://your-db-name-yourorg.turso.io" onchange="saveTursoConfig()" />
+      <button type="button" id="tursoShowBtn" class="btn-secondary" onclick="showTursoFields()" style="width: 100%; margin-top: 8px;"></button>
+      <div id="tursoFields" style="display:none;">
+        <div class="prep-empty" style="margin: 8px 0;">Only for syncing straight to your own LedgerBox's Cloud Sync database, with the address and token from LedgerBox's Settings → Sync Across PCs. On a Boxridge ShiftLog plan, sign in to your account above instead. Receipt photos stay on your phone here.</div>
+        <div class="form-group">
+          <label>Database URL</label>
+          <input type="text" id="tursoUrl" placeholder="libsql://your-db-name-yourorg.turso.io" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label>Auth Token</label>
+          <input type="password" id="tursoToken" placeholder="Paste the token from LedgerBox" autocomplete="off" />
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="saveTursoConfig()" style="flex:1;">Save connection</button>
+          <button type="button" class="btn-secondary" onclick="hideTursoFields()" style="flex:1;">Cancel</button>
+        </div>
+        <div id="tursoMsg" class="acct-msg"></div>
+        <div id="tursoAdvanced" style="display:none; margin-top: 10px;">
+          <button type="button" class="btn-secondary" onclick="syncAllExistingData()" style="width: 100%;">☁️ Send Everything on This Phone Again</button>
+          <div class="prep-empty" style="margin-top: 4px;">Only needed if something didn't arrive in LedgerBox; it happens by itself when sync is first set up.</div>
+          <button type="button" class="btn-secondary" onclick="disconnectTurso()" style="width: 100%; margin-top: 8px;">Disconnect this phone</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Turso Auth Token</label>
-        <input type="password" id="tursoToken" placeholder="Paste the same token used in LedgerBox" onchange="saveTursoConfig()" />
-      </div>
-      <div id="syncStatusRow" style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
-        <span id="syncStatusText" class="prep-empty" style="margin-bottom:0;">Not configured</span>
-        <button type="button" class="btn-secondary" onclick="manualSyncNow()">Sync Now</button>
-      </div>
-      <button type="button" class="btn-secondary" onclick="syncAllExistingData()" style="width: 100%; margin-top: 8px;">☁️ Sync All Existing Data to LedgerBox</button>
-      <div class="prep-empty" style="margin-top: 4px; margin-bottom: 0;">This runs automatically the first time you set up sync above. Use this button if you ever need to force everything on this phone to sync again.</div>
       </div>
     </div>
 
@@ -1537,7 +1564,12 @@
               Taxable (include this when pulled into an invoice's taxable subtotal)
             </label>
           </div>
-          <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" style="margin-top: 6px;" />
+          <div class="photo-btns">
+            <button type="button" class="photo-btn" onclick="document.getElementById('shiftReceiptInput').click()">📷 Take Receipt Photo</button>
+            <button type="button" class="photo-btn photo-btn-alt" onclick="document.getElementById('shiftReceiptPick').click()">🖼️ From Photos</button>
+          </div>
+          <input type="file" id="shiftReceiptInput" accept="image/*" capture="environment" onchange="handleShiftReceiptSelected(event)" hidden />
+          <input type="file" id="shiftReceiptPick" accept="image/*" onchange="handleShiftReceiptSelected(event)" hidden />
           <div id="shiftReceiptPreview" class="receipt-preview"></div>
           <button type="button" class="btn-secondary" onclick="logMaterialCostOnly()" style="width: 100%; margin-top: 8px;">+ Log This Material Cost</button>
           <div id="materialCostConfirm" style="display: none; text-align: center; font-size: 0.8rem; color: #16a34a; margin-top: 6px; font-weight: 600;"></div>
@@ -1678,7 +1710,12 @@
 
       <div class="form-group">
         <label>Receipt Photo (optional)</label>
-        <input type="file" id="expenseReceiptInput" accept="image/*" capture="environment" onchange="handleReceiptSelected(event)" />
+        <div class="photo-btns">
+          <button type="button" class="photo-btn" onclick="document.getElementById('expenseReceiptInput').click()">📷 Take Receipt Photo</button>
+          <button type="button" class="photo-btn photo-btn-alt" onclick="document.getElementById('expenseReceiptPick').click()">🖼️ From Photos</button>
+        </div>
+        <input type="file" id="expenseReceiptInput" accept="image/*" capture="environment" onchange="handleReceiptSelected(event)" hidden />
+        <input type="file" id="expenseReceiptPick" accept="image/*" onchange="handleReceiptSelected(event)" hidden />
         <div id="expenseReceiptPreview" class="receipt-preview"></div>
       </div>
 
@@ -1864,7 +1901,7 @@
     const TURSO_URL_KEY = 'shiftlog_turso_url';
     const TURSO_TOKEN_KEY = 'shiftlog_turso_token';
     const SYNC_QUEUE_KEY = 'shiftlog_sync_queue';
-    const APP_VERSION = '3.48.3'; // kept equal to LedgerBox's version; bump both together
+    const APP_VERSION = '3.48.5'; // kept equal to LedgerBox's version; bump both together
     let entries = [];
     let jobCodes = {}; // { normalizedJobKey: { label: 'Original Job Name', codes: ['1642', 'Main Gate'] } }
     let prepItems = {}; // { normalizedJobKey: { label: 'Original Job Name', items: [{ id, text, done }] } }
@@ -2620,9 +2657,15 @@
       const file = event.target.files[0];
       if (!file) return;
 
+      event.target.value = '';
       try {
         pendingReceiptDataUrl = await compressImage(file, 1000, 0.6);
         renderReceiptPreview();
+        if (quickReceiptPending) {             // came from the 📷 Receipt button: next, the amount
+          quickReceiptPending = false;
+          const amt = document.getElementById('expenseAmount');
+          if (amt) { amt.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => amt.focus(), 300); }
+        }
       } catch (err) {
         console.warn('Could not process receipt photo', err);
         alert('Could not process that photo — try a different one.');
@@ -2647,9 +2690,21 @@
       `;
     }
 
+    // v3.48.5: the 📷 Receipt button at the top: straight to the camera, then to the expense with the photo attached.
+    let quickReceiptPending = false;
+    function quickReceipt() {
+      const card = document.getElementById('expenseAmount');
+      const dateEl = document.getElementById('expenseDate');
+      if (dateEl && !dateEl.value) dateEl.value = localISODate();
+      if (card) card.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      quickReceiptPending = true;
+      document.getElementById('expenseReceiptInput').click();
+    }
+
     function removePendingReceipt() {
       pendingReceiptDataUrl = null;
       document.getElementById('expenseReceiptInput').value = '';
+      document.getElementById('expenseReceiptPick').value = '';
       document.getElementById('expenseReceiptPreview').innerHTML = '';
     }
 
@@ -2658,6 +2713,7 @@
     async function handleShiftReceiptSelected(event) {
       const file = event.target.files[0];
       if (!file) return;
+      event.target.value = '';
 
       try {
         pendingShiftReceiptDataUrl = await compressImage(file, 1000, 0.6);
@@ -3396,12 +3452,78 @@
 
     const SYNC_BACKFILLED_KEY = 'shiftlog_sync_backfilled';
 
-    function saveTursoConfig() {
+    // v3.48.4: the connection is set up once and then kept out of the way: hidden behind a button, saved only with
+    // Save connection (never on every keystroke), checked before it's kept, and changed only on purpose.
+    function renderTursoSection() {
+      const sec = document.getElementById('tursoSection');
+      if (!sec) return;
+      const signedIn = typeof accountConfigured === 'function' && accountConfigured();
+      const on = tursoConfigured();
+      // a Boxridge plan replaces this; on boxridgesoftware.com it only shows for a phone that already uses it
+      sec.style.display = signedIn || (!on && typeof onBoxridgeSite === 'function' && onBoxridgeSite() && !sec.dataset.forced) ? 'none' : 'block';
+      document.getElementById('tursoOn').style.display = on ? 'block' : 'none';
+      if (on) {
+        let host = getTursoConfig().url;
+        try { host = new URL(tursoHttpBase(host)).host; } catch (e) { /* keep as typed */ }
+        document.getElementById('tursoConnected').innerHTML = `Connected to <strong>${escHtml(host)}</strong>`;
+      }
+      const fieldsOpen = document.getElementById('tursoFields').style.display !== 'none';
+      const btn = document.getElementById('tursoShowBtn');
+      btn.style.display = fieldsOpen ? 'none' : 'block';
+      btn.textContent = on ? 'Change connection…' : 'Set up (advanced)…';
+      document.getElementById('tursoAdvanced').style.display = on ? 'block' : 'none';
+    }
+    function showTursoFields() {
+      if (tursoConfigured() && !confirm('Change the database this phone syncs to? Syncing stops until the new address and token are saved and work.')) return;
+      document.getElementById('tursoUrl').value = getTursoConfig().url;
+      document.getElementById('tursoToken').value = '';
+      document.getElementById('tursoToken').placeholder = tursoConfigured() ? 'Paste the token again to change it' : 'Paste the token from LedgerBox';
+      document.getElementById('tursoMsg').textContent = '';
+      document.getElementById('tursoFields').style.display = 'block';
+      renderTursoSection();
+    }
+    function hideTursoFields() {
+      document.getElementById('tursoFields').style.display = 'none';
+      document.getElementById('tursoToken').value = '';
+      renderTursoSection();
+    }
+    function disconnectTurso() {
+      const pending = getSyncQueue().length;
+      if (!confirm(pending ? `${pending} change${pending === 1 ? '' : 's'} haven't reached LedgerBox yet. Disconnect anyway? Everything stays on this phone.`
+        : 'Stop syncing this phone to LedgerBox? Everything stays on this phone.')) return;
+      localStorage.removeItem(TURSO_URL_KEY);
+      localStorage.removeItem(TURSO_TOKEN_KEY);
+      hideTursoFields();
+      updateSyncStatusDisplay();
+    }
+
+    async function saveTursoConfig() {
       const url = document.getElementById('tursoUrl').value.trim();
-      const token = document.getElementById('tursoToken').value.trim();
+      const token = document.getElementById('tursoToken').value.trim() || (tursoConfigured() ? getTursoConfig().token : '');
+      const msg = document.getElementById('tursoMsg');
+      if (!/^(libsql|https):\/\/[^\s/]+/i.test(url) && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?/.test(url)) { msg.textContent = 'The database URL starts with libsql:// (copy it from LedgerBox).'; return; }
+      if (token.length < 20) { msg.textContent = 'Paste the auth token from LedgerBox.'; return; }
+      // try it before keeping it, so a typo can't quietly stop syncing
+      msg.textContent = 'Checking the connection…';
+      try {
+        const resp = await fetch(`${tursoHttpBase(url)}/v1/execute`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stmt: { sql: 'SELECT 1', args: [], named_args: [], want_rows: true } }) });
+        if (resp.status === 401 || resp.status === 403) { msg.textContent = 'The database said the token is wrong. Copy it again from LedgerBox.'; return; }
+        if (!resp.ok) { msg.textContent = `The database answered ${resp.status}. Check the URL.`; return; }
+      } catch (e) {
+        if (navigator.onLine !== false) { msg.textContent = "Can't reach that database. Check the URL (or try again with signal)."; return; }
+        // offline: keep it; it's checked again on the first sync
+      }
+      msg.textContent = '';
+      saveTursoValues(url, token);
+      hideTursoFields();
+    }
+
+    function saveTursoValues(url, token) {
       const wasConfigured = tursoConfigured();
       localStorage.setItem(TURSO_URL_KEY, url);
       localStorage.setItem(TURSO_TOKEN_KEY, token);
+      renderTursoSection();
 
       // The first time sync gets turned on, automatically push everything
       // already on the phone, not just changes from here on.
@@ -3423,7 +3545,7 @@
     // some reason (sync was already configured before this feature existed).
     function syncAllExistingData() {
       if (!syncEnabled()) {
-        alert('Enter your Turso Database URL and Auth Token above first (the same ones used in LedgerBox).');
+        alert('Set up the LedgerBox connection first (Settings → Sync to LedgerBox → Set up).');
         return;
       }
       const total = entries.length + expenses.length;
@@ -4373,8 +4495,7 @@
       const signedIn = !!(a && a.token);
       document.getElementById('acctSignedOut').style.display = signedIn ? 'none' : 'block';
       document.getElementById('acctSignedIn').style.display = signedIn ? 'block' : 'none';
-      const turso = document.getElementById('tursoSection');
-      if (turso) turso.style.display = signedIn ? 'none' : 'block';
+      renderTursoSection();
       const banner = document.getElementById('acctBanner');
       if (banner) banner.style.display = (!signedIn && onBoxridgeSite() && localStorage.getItem('shiftlog_account_banner_off') !== '1') || (a && a.signedOut) ? 'flex' : 'none';
       const was = document.getElementById('acctWasSignedIn');
@@ -4773,10 +4894,7 @@
 
       // Restore saved Turso sync settings and try flushing anything left
       // over from a previous session (e.g. the app was closed while offline)
-      const tursoUrlEl = document.getElementById('tursoUrl');
-      const tursoTokenEl = document.getElementById('tursoToken');
-      if (tursoUrlEl) tursoUrlEl.value = getTursoConfig().url;
-      if (tursoTokenEl) tursoTokenEl.value = getTursoConfig().token;
+      renderTursoSection();
       if (tursoConfigured() && localStorage.getItem(SYNC_BACKFILLED_KEY) !== 'true') {
         queueAllExistingDataForSync();
         localStorage.setItem(SYNC_BACKFILLED_KEY, 'true');
